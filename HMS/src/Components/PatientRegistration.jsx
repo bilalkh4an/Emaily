@@ -13,56 +13,57 @@ const PatientRegistration = () => {
   });
 
   const canProceed = () => {
-  if (page === 1) {
-    // Step 1: name, age, gender required
-    return formdata.name && formdata.age && formdata.gender;
-  }
+    if (page === 1) {
+      // Step 1: name, age, gender required
+      return formdata.name && formdata.age && formdata.gender;
+    }
 
-  if (page === 2) {
-    // Step 2: medical info required
-    return formdata.medicalcondition && formdata.Allergies && formdata.CurrentMedications;
-  }
+    if (page === 2) {
+      // Step 2: medical info required
+      return (
+        formdata.medicalcondition &&
+        formdata.Allergies &&
+        formdata.CurrentMedications
+      );
+    }
 
-  return true; // Step 3 is confirmation, no check needed
-};
+    return true; // Step 3 is confirmation, no check needed
+  };
 
- const datachanged = (e) => {
-  const { name, value } = e.target;
-  
+  const datachanged = (e) => {
+    const { name, value } = e.target;
 
-  setFromdata((prev) => ({
-    ...prev,
-    [name]: value,
-  }));
-  
-};
-
+    setFromdata((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   const formHandler = (e, identifier) => {
     e.preventDefault();
 
     if (identifier === "next") {
-        if (!canProceed()) {
-      alert("Please fill all required fields for this step!");
-      return; // stop moving forward
-    }
-    if (!canProceed()) {
-      alert("Please fill all required fields for this step!");
-      return; // stop moving forward
-    }
+      if (!canProceed()) {
+        alert("Please fill all required fields for this step!");
+        return; // stop moving forward
+      }
+      if (!canProceed()) {
+        alert("Please fill all required fields for this step!");
+        return; // stop moving forward
+      }
       setPage((prev) => Math.min(prev + 1, 3));
     }
 
     if (identifier === "back") {
-        if (!canProceed()) {
-      alert("Please fill all required fields for this step!");
-      return; // stop moving forward
-    }
+      if (!canProceed()) {
+        alert("Please fill all required fields for this step!");
+        return; // stop moving forward
+      }
       setPage((prev) => Math.max(prev - 1, 1));
     }
 
     if (identifier === "Register") {
-        alert("Data Enter Successfully")
+      alert("Data Enter Successfully");
     }
   };
 
@@ -159,7 +160,7 @@ const PatientRegistration = () => {
                 <span className="text-sm font-medium">Date of Birth</span>
               </div>
               <input
-              type="number"
+                type="date"
                 className="w-full border rounded  px-5 py-2 mx-2 my-1"
                 placeholder="Date of Birth"
                 name="age"
@@ -172,14 +173,19 @@ const PatientRegistration = () => {
                 <VenusAndMars size={18} className="text-blue-600" />
                 <span className="text-sm font-medium">Gender</span>
               </div>
-              <input
-                className="w-full border rounded  px-5 py-2 mx-2 my-1"
-                placeholder="Gender"
+              <select
                 name="gender"
-                onChange={(e) => {
-                  datachanged(e);
-                }}
-              />
+                className="w-full border rounded px-5 py-2 mx-2 my-1"
+                onChange={datachanged}
+                defaultValue=""
+              >
+                <option value="" disabled>
+                  Select Gender
+                </option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
             </div>
 
             <div className={page == 2 ? "block" : "hidden"}>
@@ -244,7 +250,9 @@ const PatientRegistration = () => {
                     </h3>
                     <p className="mb-1 text-gray-600">Name: {formdata.name}</p>
                     <p className="mb-1 text-gray-600">Age: {formdata.age}</p>
-                    <p className="mb-1 text-gray-600">Gender: {formdata.gender}</p>
+                    <p className="mb-1 text-gray-600">
+                      Gender: {formdata.gender}
+                    </p>
 
                     <h3 className="text-xl font-semibold mt-6 mb-4">
                       Medical Information
@@ -252,7 +260,9 @@ const PatientRegistration = () => {
                     <p className="mb-1 text-gray-600">
                       Medical Condition(s): {formdata.medicalcondition}
                     </p>
-                    <p className="mb-1 text-gray-600">Allergies: {formdata.Allergies}</p>
+                    <p className="mb-1 text-gray-600">
+                      Allergies: {formdata.Allergies}
+                    </p>
                     <p className="mb-1 text-gray-600">
                       Current Medications: {formdata.CurrentMedications}
                     </p>
