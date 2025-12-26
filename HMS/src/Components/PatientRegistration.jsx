@@ -265,7 +265,7 @@ const PatientRegistration = () => {
                 onClick={(e) => {
                   formHandler(e, "back");
                 }}
-                className="bg-black text-white py-2 px-20 rounded-2xl"
+                className="bg-black text-white py-2 px-20 rounded-2xl hover:bg-gray-600"
               >
                 Back
               </button>
@@ -275,7 +275,7 @@ const PatientRegistration = () => {
                 }}
                 className={
                   page < 3
-                    ? "block bg-black text-white py-2 px-20 rounded-2xl "
+                    ? "block bg-black text-white py-2 px-20 rounded-2xl  hover:bg-gray-600 "
                     : "hidden"
                 }
               >
@@ -288,7 +288,7 @@ const PatientRegistration = () => {
                 }}
                 className={
                   page == 3
-                    ? "block bg-black text-white py-2 px-20 rounded-2xl "
+                    ? "block bg-black text-white py-2 px-20 rounded-2xl  hover:bg-green-700  "
                     : "hidden"
                 }
               >
