@@ -11,8 +11,7 @@ function App() {
 
   return (
     <>
-      <PatientRegistration />
-      <script src="https://cdn.jsdelivr.net/npm/@tailwindplus/elements@1" type="module"></script>
+    <PatientRegistration />
     </>
   )
 }

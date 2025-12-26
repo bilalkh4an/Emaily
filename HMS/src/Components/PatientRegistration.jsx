@@ -1,5 +1,25 @@
 import { User, CalendarDays,VenusAndMars, Mail, Phone } from "lucide-react";
+import { useState } from "react";
 const PatientRegistration = () => {
+
+    const [page,setPage] = useState(1);
+
+    const formHandler = (e,identifier) => {
+    e.preventDefault();
+
+
+        if (identifier === "next") {
+        setPage(prev => Math.min(prev + 1, 3));
+        }
+
+        if (identifier === "back") {
+        setPage(prev => Math.max(prev - 1, 1));
+        }
+
+    
+    
+
+};
 
     return (
         <div className="bg-[url(./assets/background2.png)] bg-cover bg-center bg-no-repeat">        
@@ -10,8 +30,9 @@ const PatientRegistration = () => {
                 <div className="flex items-center justify-center w-full my-8">
   {/* Step 1 */}
   <div className="flex items-center">
-    <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-semibold">
+    <div className={`w-8 h-8 rounded-full ${page ==1 ?  "bg-indigo-600" : "bg-gray-300" } text-white flex items-center justify-center font-semibold`}>
       1
+      
     </div>
     <span className="ml-2 text-sm font-medium text-indigo-600">
       Personal Info
@@ -23,7 +44,7 @@ const PatientRegistration = () => {
 
   {/* Step 2 */}
   <div className="flex items-center">
-    <div className="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-semibold">
+    <div className={`w-8 h-8 rounded-full ${page ==2 ?  "bg-indigo-600" : "bg-gray-300" } text-white flex items-center justify-center font-semibold`}>
       2
     </div>
     <span className="ml-2 text-sm text-gray-500">
@@ -36,7 +57,7 @@ const PatientRegistration = () => {
 
   {/* Step 3 */}
   <div className="flex items-center">
-    <div className="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-semibold">
+    <div className={`w-8 h-8 rounded-full ${page ==3 ?  "bg-indigo-600" : "bg-gray-300" } text-white flex items-center justify-center font-semibold`}>
       3
     </div>
     <span className="ml-2 text-sm text-gray-500">
@@ -45,7 +66,9 @@ const PatientRegistration = () => {
   </div>
 </div>
 
-                <form className="">                
+                <form className="">     
+                    <div className={` ${page==1 ? "block" : "hidden"} `}>
+                                
   
                 <div className="flex items-center gap-2 text-gray-700 mx-2 my-2">
                 <User size={18} className="text-blue-600" />
@@ -66,9 +89,16 @@ const PatientRegistration = () => {
                 <span className="text-sm font-medium">Gender</span>
                 </div>
                 <input className="w-full border rounded  px-5 py-2 mx-2 my-1" placeholder="Gender" />
+                </div>   
 
-                    <button className="bg-black text-white py-2 px-20 mx-20 my-5 rounded-2xl">Back</button>
-                    <button className="bg-black text-white py-2 px-20 rounded-2xl">Next</button>
+                    <button onClick={(e)=>{
+                        formHandler(e,"back");
+                    }} className="bg-black text-white py-2 px-20 mx-20 my-5 rounded-2xl">Back</button>
+                    <button onClick={(e)=>{
+                        formHandler(e,"next");
+
+                    }} className="bg-black text-white py-2 px-20 rounded-2xl">Next</button>
+                    
                 </form>    
             </div>            
         </div>
