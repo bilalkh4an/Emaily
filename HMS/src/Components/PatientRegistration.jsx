@@ -235,7 +235,7 @@ const PatientRegistration = () => {
               <div className="flex justify-center">
                 <div className="flex flex-col md:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden max-w-4xl w-full">
                   {/* Left Side - Image */}
-                  <div className="flex justify-center items-center p-6 md:p-10 md:w-1/2 bg-gray-100">
+                  <div className="flex justify-center items-center p-6 md:p-10 md:w-1/2 bg-purple-600">
                     <img
                       className="w-48 h-48 md:w-56 md:h-56 rounded-full object-cover"
                       src="https://thumbs.dreamstime.com/b/circle-check-mark-icon-confirmation-success-logo-symbol-approved-accept-complete-406016702.jpg"

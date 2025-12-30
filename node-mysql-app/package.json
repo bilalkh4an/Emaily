@@ -1,0 +1,17 @@
+{
+  "name": "node-backend",
+  "version": "1.0.0",
+  "description": "Clean Node.js backend setup",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "type": "commonjs",
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
