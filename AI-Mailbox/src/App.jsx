@@ -1,6 +1,5 @@
 import { useState } from "react";
 import "./App.css";
-import ResponsiveEmailApp from "./ResponsiveEmailApp";
 import SideNav from "./Components/SideNav";
 import TopNav from "./Components/TopNav";
 import SearchMail from "./Components/SearchMail";
@@ -14,6 +13,10 @@ import SettingsModal from "./Components/SettingsView";
 import TrainingLab from "./Components/TrainingLab";
 
 function App() {
+  window.onerror = function (msg, src, line, col) {
+  alert(`Error: ${msg}\nLine: ${line}`);
+};
+
   
   const [allEmails, setAllEmails] = useState([
     {
@@ -167,10 +170,7 @@ function App() {
     "Gmail",
     "Outlook",
     "Work IMAP",
-    "All Mails",
-    "Gmails",
-    "Outlooks",
-    "Work IMAPs",
+    "Business IMAP",
   ]);
   const [activeFolder, setActiveFolder] = useState("Inbox");
   const [activeTab, setActiveTab] = useState("All Mail");
@@ -308,6 +308,7 @@ function App() {
             setIsComposeOpen={setIsComposeOpen}
             Avatar={Avatar}
             openEmail={openEmail}
+            setIsAIReplyOpen={setIsAIReplyOpen}
           />
         </section>
 

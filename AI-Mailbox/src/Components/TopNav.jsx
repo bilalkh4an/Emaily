@@ -42,10 +42,12 @@ const TopNav = ({
   className="
    
     px-6 py-2.5
+    bg-blue-600
+    font-semibold 
+    hover:bg-blue-700
+    text-white
     rounded-2xl
-    bg-gray-900 text-white
     shadow-lg
-    hover:bg-gray-800
     transition
   "
   onClick={() => setIsLabOpen(true)}

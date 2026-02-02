@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import Dropdown from "./Dropdown";
 import { X, Sparkles, Wand2 } from "lucide-react";
 
-const AIReplyModal = ({ isOpen, onClose, onInsert }) => {
+const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
+  
   const [prompt, setPrompt] = useState(
     "Mention we can meet Thursday and ask for the updated contract."
   );
@@ -12,9 +13,37 @@ const AIReplyModal = ({ isOpen, onClose, onInsert }) => {
 
   const [tone, setTone] = useState(options1[0]);
   const [length, setLength] = useState(options2[0]);
-  
+  const [drafts, setDrafts] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleRegenerate = async () => {
+    try {
+      setLoading(true);
+
+      const response = await fetch("/api/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: "bilal_khan",
+          threadId: "PROXMOX_002",
+          prompt: prompt,
+          tone,
+          length
+        }),
+      });
+
+      const data = await response.json();
+
+      // Assume API returns an array of generated drafts
+      setDrafts(data.drafts || [data.draft || "No draft returned"]);
+    } catch (error) {
+      console.error("Failed to generate draft:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const DraftCard = ({ title, content }) => {
     const [copied, setCopied] = useState(false);
@@ -25,20 +54,33 @@ const AIReplyModal = ({ isOpen, onClose, onInsert }) => {
       setTimeout(() => setCopied(false), 2000);
     };
 
+    const formatTextToHTML = (text) => {
+    return text
+      .split('\n')
+      .map(line => line.trim() ? `<p>${line}</p>` : `<p></p>`)
+      .join('');
+  };
+    
+
     return (
       <div className="bg-gradient-to-br from-white to-gray-50/50 border border-gray-200 rounded-2xl p-4 flex flex-col shadow-sm hover:shadow-md transition-all hover:border-blue-200">
         <span className="font-bold text-sm mb-2 text-gray-800">{title}</span>
-        <p className="text-xs text-gray-600 leading-relaxed flex-grow mb-4 line-clamp-5">
-          {content}
-        </p>
+        <div className="text-xs text-gray-600 leading-relaxed flex-grow mb-4 whitespace-pre-wrap break-words">
+        {content}
+      </div>
         <div className="flex gap-2">
           <button
-            onClick={() => onInsert(content)}
+            onClick={() => 
+            {
+              const htmlContent = formatTextToHTML(content);
+              onInsert(htmlContent)}
+            }
+            
             className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-bold py-2.5 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm active:scale-95"
           >
             Use This
           </button>
-          <button 
+          <button
             onClick={handleCopy}
             className="flex-1 border-2 border-gray-200 text-gray-700 text-xs font-bold py-2.5 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95"
           >
@@ -69,14 +111,9 @@ const AIReplyModal = ({ isOpen, onClose, onInsert }) => {
           </button>
         </div>
 
-        {/* Body with Tailwind-Only Scrollbar Classes */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-gray-50/30 to-white
-          [&::-webkit-scrollbar]:w-2
-          [&::-webkit-scrollbar-track]:bg-transparent
-          [&::-webkit-scrollbar-thumb]:bg-gray-200
-          [&::-webkit-scrollbar-thumb]:rounded-full
-          hover:[&::-webkit-scrollbar-thumb]:bg-gray-300">
-          
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-gray-50/30 to-white">
+          {/* Prompt & Options */}
           <div className="md:flex md:gap-6">
             <div className="flex gap-3 md:flex-col md:w-1/4 mb-5 md:mb-0">
               <div className="w-full">
@@ -102,47 +139,29 @@ const AIReplyModal = ({ isOpen, onClose, onInsert }) => {
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Describe what you want to say..."
                 />
-              </div>
+              </div>              
             </div>
           </div>
 
+          {/* Generated Drafts */}
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-1.5 rounded-lg">
-                <Sparkles size={14} className="text-white" />
-              </div>
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wide">Generated Drafts</label>
-              <div className="flex-1 h-px bg-gradient-to-r from-gray-200 to-transparent" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <DraftCard title="Short" content="Let's meet on Thursday. Can you bring the contract?" />
-              <DraftCard title="Normal" content="How about meeting on Thursday? Please bring the contract." />
-              <DraftCard title="Formal" content="Shall we arrange a meeting for Thursday? Kindly bring the contract." />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <label className="text-xs font-bold text-gray-700 uppercase tracking-wide block">Quick Improvements</label>
-            <div className="flex flex-wrap gap-2.5">
-              {[
-                { label: 'Make it shorter', icon: '✂️' },
-                { label: 'Add a clear CTA', icon: '🎯' },
-                { label: 'Sound warmer', icon: '☀️' },
-                { label: 'Summarize context', icon: '📝' }
-              ].map(item => (
-                <button key={item.label} className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all active:scale-95 shadow-sm">
-                  <span className="text-base">{item.icon}</span> {item.label}
-                </button>
-              ))}
-            </div>
+            {drafts.length > 0 ? drafts.map((draft, i) => (
+              <DraftCard key={i} title={`Draft ${i + 1}`} content={draft} />
+            )) : (
+              <p className="text-gray-400 text-sm">No drafts generated yet.</p>
+            )}
           </div>
         </div>
 
         {/* Footer */}
         <div className="flex-shrink-0 p-6 border-t border-gray-200 flex gap-3 bg-gradient-to-b from-gray-50/50 to-white">
-          <button onClick={() => onInsert(prompt)} className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold py-4 rounded-2xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-200/50 active:scale-[0.98] flex items-center justify-center gap-2">
+          <button
+            onClick={handleRegenerate}
+            disabled={loading}
+            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold py-4 rounded-2xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-200/50 active:scale-[0.98] flex items-center justify-center gap-2"
+          >
             <Sparkles size={18} />
-            Insert into Email
+            {loading ? "Generating..." : "Regenerate AI Drafts"}
           </button>
           <button onClick={onClose} className="px-8 py-4 border-2 border-gray-200 bg-white text-gray-700 font-bold rounded-2xl hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] transition-all">
             Cancel
