@@ -1,24 +1,23 @@
 import { Ollama } from 'ollama';
 import { collection } from './db.js';
 
+
 // Initialize with your Proxmox Container IP
 const ollama = new Ollama({ host: 'http://185.119.109.61:11434' });
 
 /**
  * DRAFT GENERATOR
  */
-async function generateAIPrompt(userId, voiceDNA, newEmail, formattedHistory, semanticContext) {
+async function generateAIPrompt(userId, voiceDNA, newEmail, formattedHistory, onToken) {
+  console.log('AI stream started');
   
   // 1. Construct the System Instructions
   const systemInstructions = `
     You are a professional AI email assistant.
-
-    VOICE DNA (Your Style Guide):
-    ${JSON.stringify(voiceDNA)}
-
-    HISTORICAL CONTEXT (Relevant past info from other threads):
-    ${semanticContext || "No past related context found."}
+    VOICE DNA (Your Style Guide): ${JSON.stringify(voiceDNA)}
   `;
+
+   let finalResponse = '';
 
   // 2. Construct the User Prompt with the Current Thread
   const userPrompt = `
@@ -38,15 +37,31 @@ async function generateAIPrompt(userId, voiceDNA, newEmail, formattedHistory, se
     4. Stay strictly consistent with the conversation history above.
     5. Be concise, professional, and structured.
   `;
-
+console.log(userPrompt);
   // 3. GENERATE FINAL DRAFT
-  const response = await ollama.generate({
+  const stream = await ollama.generate({
     model: 'llama4:17b-scout-16e-instruct-q4_K_M',
     system: systemInstructions,
-    prompt: userPrompt
+    prompt: userPrompt,
+    stream: true,
   });
 
-  return response.response;
+  for await (const chunk of stream) {
+    if (chunk.response) {
+      finalResponse += chunk.response;
+
+      // LIVE STREAM OUTPUT
+      if (onToken) {
+        onToken(chunk.response);
+      }
+    }
+
+    if (chunk.done) {
+      console.log('AI stream finished');
+    }
+  }
+
+  return finalResponse;
 }
 
 export { generateAIPrompt };

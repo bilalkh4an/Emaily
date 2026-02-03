@@ -4,6 +4,7 @@ import { extractVoiceDNA, saveSentEmail } from './training.js';
 import { VoiceDNA } from './models/VoiceDNA.js'; // Import the new model
 import { EmailMemory } from './models/EmailMemory.js';
 import { generateAIPrompt } from './drafting.js';
+import cors from 'cors';
 // 1. THIS MUST BE THE FIRST LINE
 import 'dotenv/config'; 
 import { Ollama } from 'ollama'; // 1. Import the Class
@@ -11,6 +12,15 @@ import { Ollama } from 'ollama'; // 1. Import the Class
 
 const app = express();
 app.use(express.json()); // Allows the API to read JSON from your React app
+
+app.use(cors());
+
+// Allow only your frontend domain
+// app.use(cors({
+//   origin: 'http://https://emaily.uk/', // or '*' to allow all
+//   methods: ['GET','POST','PUT','DELETE'],
+//   credentials: true // if you need cookies/auth
+// }));
 
 
 // ENDPOINT 1: Initial Setup (The 10 Emails)
@@ -67,80 +77,54 @@ app.post('/api/setup-voice', async (req, res) => {
 
 app.post('/api/draft', async (req, res) => {
   try {
-    const { userId, threadId, prompt } = req.body;
+    const { userId, threadId, prompt, sessionHistory = [] } = req.body;    
 
-    // 1. Fetch Voice DNA
-    const defaultDNA = {
-      tone: ["professional", "direct"],
-      communication_style: ["concise"]
-    };
+    // 1. Set SSE Headers immediately
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // ... (Keep your Voice DNA, Thread History, and Semantic Context logic exactly as is) ...
     const userRecord = await VoiceDNA.findOne({ userId });
-    const activeDNA = userRecord ? userRecord.voiceDNA : defaultDNA;
+    const activeDNA = userRecord ? userRecord.voiceDNA : { tone: ["professional"], communication_style: ["concise"] };
+    const threadHistory = await EmailMemory.find({ userId, threadId }).sort({ createdAt: 1 }).limit(10);
+    // const formattedHistory = threadHistory.map(msg => `${msg.role === 'user' ? 'Client' : 'Me'}: ${msg.content}`).join('\n');
 
-    // 2. Fetch Thread History (Current Conversation Context)
-    // We get the last 10 messages to keep the thread context fresh
-    const threadHistory = await EmailMemory.find({ userId, threadId })
-      .sort({ createdAt: 1 }) // Chronological order
-      .limit(10);
-      
+    // 2. Fetch Thread History from DB (Previous emails)
+    const dbHistory = await EmailMemory.find({ userId, threadId }).sort({ createdAt: 1 }).limit(5);
 
-    const formattedHistory = threadHistory.map(msg => 
-      `${msg.role === 'user' ? 'Client' : 'Me'}: ${msg.content}`
-    ).join('\n');
-
-    // 3. Optional: Vector Search (Semantic Context)
-    // Find similar past threads from other conversations
-    let semanticContext = "";
-    try {
-      const queryEmbeddingResponse = await ollama.embeddings({
-        model: 'mxbai-embed-large',
-        prompt: prompt
-      });
-
-      const similarThreads = await EmailMemory.aggregate([
-        {
-          "$vectorSearch": {
-            "index": "vector_index", 
-            "path": "embedding",
-            "queryVector": queryEmbeddingResponse.embedding,
-            "numCandidates": 5,
-            "limit": 2
-          }
-        },
-        { "$match": { "userId": userId, "threadId": { "$ne": threadId } } } // Don't match current thread
-      ]);
-
-      semanticContext = similarThreads.map(t => 
-        `Past Context: Client asked: ${t.content}`
-      ).join('\n');
-    } catch (vErr) {
-      console.log("Vector Search skipped or failed:", vErr.message);
-    }
-
-    // 4. Combine Context for AI
-    console.log(`🧬 Using ${userRecord ? 'Custom' : 'Default'} DNA and Thread Context for ${userId}`);
-
-    const draft = await generateAIPrompt(
+    // 3. Combine DB History + Current Session Instructions
+    const formattedHistory = [
+       ...dbHistory.map(msg => `${msg.role === 'user' ? 'Client' : 'Me'}: ${msg.content}`),
+       ...sessionHistory.map(msg => `${msg.role === 'user' ? 'User Instruction' : 'AI Draft'}: ${msg.content}`)
+    ].join('\n');
+    
+    // 2. Call generateAIPrompt
+    // Note: We use res.write to push tokens to the frontend in real-time
+    await generateAIPrompt(
       userId, 
       activeDNA, 
       prompt, 
-      formattedHistory, // Current thread context
-      semanticContext   // Related past context
+      formattedHistory,  
+      (token) => {
+        res.write(token); // Send token directly to stream
+      }
     );
 
-    res.json({ 
-      success: true, 
-      draft, 
-      History:formattedHistory,
-      Sementic: semanticContext,      
-      historyCount: threadHistory.length 
-    });
+    res.end(); // Close the connection when AI is finished
     
   } catch (error) {
     console.error("Drafting Error:", error);
-    res.status(500).json({ error: error.message });
+    // If headers haven't been sent, we can send a 500. Otherwise, we just end.
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.end();
+    }
   }
 });
+
+
 // ENDPOINT 3: Feedback Loop
 // React calls this when the user clicks "Send"
 app.post('/api/confirm-send', async (req, res) => {

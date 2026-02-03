@@ -10,6 +10,8 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
 
   const options1 = ["Default Tone", "Formal", "Casual", "Friendly"];
   const options2 = ["Short", "Medium", "Long"];
+  // Inside your component, add a new state to track the session chat
+const [sessionHistory, setSessionHistory] = useState([]);
 
   const [tone, setTone] = useState(options1[0]);
   const [length, setLength] = useState(options2[0]);
@@ -19,31 +21,56 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
   if (!isOpen) return null;
 
   const handleRegenerate = async () => {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const response = await fetch("/api/draft", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: "bilal_khan",
-          threadId: "PROXMOX_002",
-          prompt: prompt,
-          tone,
-          length
-        }),
-      });
+    // 1. Capture the current prompt and add it to the history
+    const currentMessage = { role: "user", content: prompt };
+    const updatedHistory = [...sessionHistory, currentMessage];
+    setDrafts([]); // Clear previous drafts if you want to see it live
 
-      const data = await response.json();
+    const response = await fetch("http://localhost:3000/api/draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: userId || "bilal_khan", // Using passed prop or default
+        threadId: threadId || "PROXMOX_002",
+        prompt: prompt,
+        sessionHistory: updatedHistory, // Sending the full session context
+        tone,
+        length
+      }),
+    });
 
-      // Assume API returns an array of generated drafts
-      setDrafts(data.drafts || [data.draft || "No draft returned"]);
-    } catch (error) {
-      console.error("Failed to generate draft:", error);
-    } finally {
-      setLoading(false);
+    if (!response.ok) throw new Error("Stream failed");
+
+    // 1. Initialize the reader
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedText = "";
+
+    // 2. Read the stream chunks
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      accumulatedText += chunk;
+
+      // 3. Update state in real-time
+      // We wrap it in an array so your existing .map() logic works
+      setDrafts([accumulatedText]);
     }
-  };
+
+    // 2. After stream finishes, add the AI's response to session history
+    setSessionHistory([...updatedHistory, { role: "assistant", content: accumulatedText }]);
+
+  } catch (error) {
+    console.error("Failed to generate draft:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const DraftCard = ({ title, content }) => {
     const [copied, setCopied] = useState(false);

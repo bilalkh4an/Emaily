@@ -69,7 +69,7 @@ const TrainingLab = ({ isOpen, onClose }) => {
     setIsTraining(true);
     setTrainStatus("");
 
-    const response = await fetch("/api/setup-voice", {
+    const response = await fetch("https://backend.emaily.uk/api/setup-voice", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
