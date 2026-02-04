@@ -324,7 +324,7 @@ function App() {
       
 
       <AIReplyModal 
-      isOpen={isAIReplyOpen} 
+        isOpen={isAIReplyOpen} 
         onClose={() => setIsAIReplyOpen(false)} 
         onInsert={(text) => {
           setComposeData(prev => ({ ...prev, body: text }));

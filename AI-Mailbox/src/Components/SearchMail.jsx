@@ -43,7 +43,7 @@ const SearchMail = ({
       </div>
 
       {/* Compose Button - Mobile Only */}
-      <div className="md:hidden">
+      <div className="xl:hidden">
         <button
           onClick={() => {
             setComposeData({

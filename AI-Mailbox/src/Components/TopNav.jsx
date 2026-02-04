@@ -10,7 +10,7 @@ const TopNav = ({
   setActiveTab,
   isAccountDropdownOpen,
   setIsAccountDropdownOpen,
-  setIsLabOpen
+  setIsLabOpen,
 }) => {
   return (
     <header className="bg-gradient-to-b from-white to-gray-50/50 border-b border-gray-200 sticky top-0 z-40 backdrop-blur-sm bg-white/95">
@@ -19,18 +19,15 @@ const TopNav = ({
           .smooth-scroll::-webkit-scrollbar { display: none; }
         `}</style>
 
-      <div className="px-4 pt-4 lg:pt-7 pb-3 w-md">
+      <div className="px-4 pt-4 lg:pt-7 pb-3 w-screen md:w-md">
         {/* Account Selector */}
         <div className="flex justify-center gap-5 items-center mb-5 relative">
-          
-          <div
+           <div
             onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
             className="flex items-center gap-2.5 border-2 border-gray-200 rounded-xl px-5 py-2.5 shadow-sm bg-white cursor-pointer hover:border-blue-300 hover:bg-blue-50/50 transition-all group z-30"
           >
             <div className="w-2 h-2 bg-blue-600 rounded-full group-hover:scale-110 transition-transform"></div>
-            <span className="text-sm font-bold text-gray-800">
-              {activeTab}
-            </span>
+            <span className="text-sm font-bold text-gray-800">{activeTab}</span>
             <ChevronDown
               size={16}
               className={`text-gray-500 transition-transform ${
@@ -38,23 +35,12 @@ const TopNav = ({
               }`}
             />
           </div>
-         <button
-  className="
-   
-    px-6 py-2.5
-    bg-blue-600
-    font-semibold 
-    hover:bg-blue-700
-    text-white
-    rounded-2xl
-    shadow-lg
-    transition
-  "
-  onClick={() => setIsLabOpen(true)}
->
-  Training Lab
-</button>
-
+          <button
+            className="px-6 py-2.5 bg-blue-600 font-semibold hover:bg-blue-700 text-white rounded-2xl shadow-lg transition"
+            onClick={() => setIsLabOpen(true)}
+          >
+            Training Lab
+          </button>
 
           {isAccountDropdownOpen && (
             <>
@@ -64,7 +50,9 @@ const TopNav = ({
               ></div>
               <div className="absolute top-14 left-1/2 -translate-x-1/2 w-56 bg-white border-2 border-gray-200 rounded-2xl shadow-2xl z-30 py-2 overflow-hidden">
                 <div className="px-3 py-2 border-b border-gray-100">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Switch Account</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    Switch Account
+                  </p>
                 </div>
                 {Account.map((acc) => (
                   <button
@@ -80,9 +68,11 @@ const TopNav = ({
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-2 h-2 rounded-full ${
-                        activeTab === acc ? "bg-blue-600" : "bg-gray-300"
-                      }`}></div>
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          activeTab === acc ? "bg-blue-600" : "bg-gray-300"
+                        }`}
+                      ></div>
                       {acc}
                     </div>
                     {activeTab === acc && (
@@ -116,4 +106,4 @@ const TopNav = ({
   );
 };
 
-export default TopNav
+export default TopNav;

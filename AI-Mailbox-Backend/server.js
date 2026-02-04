@@ -82,7 +82,11 @@ app.post('/api/draft', async (req, res) => {
     // 1. Set SSE Headers immediately
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
+    //res.setHeader('Connection', 'keep-alive');
+
+     if (req.httpVersion === '1.1') {
+      res.setHeader('Connection', 'keep-alive');
+     }
 
     // ... (Keep your Voice DNA, Thread History, and Semantic Context logic exactly as is) ...
     const userRecord = await VoiceDNA.findOne({ userId });
