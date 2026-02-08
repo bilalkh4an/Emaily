@@ -1,5 +1,4 @@
 import { Ollama } from 'ollama';
-import { collection } from './db.js';
 
 
 // Initialize with your Proxmox Container IP
@@ -24,11 +23,11 @@ async function generateAIPrompt(userId, voiceDNA, newEmail, formattedHistory, on
     CURRENT CONVERSATION LOG:
     ${formattedHistory}
 
-    CLIENT'S NEW MESSAGE:
+    MY MESSAGE:
     "${newEmail}"
 
     TASK:
-    Write a reply to the client's latest message.
+    Write an email to convay my message.
 
     Guidelines:
     1. Reason: Explain why this email is being created.
@@ -38,6 +37,7 @@ async function generateAIPrompt(userId, voiceDNA, newEmail, formattedHistory, on
     5. Be concise, professional, and structured.
   `;
 console.log(userPrompt);
+console.log(systemInstructions);
   // 3. GENERATE FINAL DRAFT
   const stream = await ollama.generate({
     model: 'llama4:17b-scout-16e-instruct-q4_K_M',

@@ -23,10 +23,6 @@ const emailMemorySchema = new mongoose.Schema({
   subject: { 
     type: String 
   },
-  embedding: {
-    type: [Number], // Array of floats for Vector Search
-    required: false // Optional until you run the embedding process
-  },
   createdAt: { 
     type: Date, 
     default: Date.now 

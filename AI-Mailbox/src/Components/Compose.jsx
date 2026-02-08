@@ -40,9 +40,9 @@ const Compose = ({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-      underline: false,
-      link: false,
-    }),
+        underline: false,
+        link: false,
+      }),
       Underline,
       Link.configure({ openOnClick: false }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
@@ -75,6 +75,29 @@ const Compose = ({
   }, [composeData.body, editor]);
 
   if (!isComposeOpen) return null;
+
+  const handlesend = async () => {
+    try {
+      const response = await fetch("https://backend.emaily.uk/api/confirm-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: "bilal_khan", // Using passed prop or default
+          threadId: "PROXMOX_002",
+          incoming: "hellow",
+          finalReply: "hey",
+        }),
+      });
+
+      if (!response.ok) throw new Error("Stream failed");
+      if (response.ok) {
+        alert("Message Sent Successfully");
+      }
+    } catch (error) {
+      alert(error);
+      console.error("Failed to generate draft:", error);
+    }
+  };
 
   const ToolbarBtn = ({ onClick, icon: Icon, active, title }) => (
     <button
@@ -277,7 +300,7 @@ const Compose = ({
             <Sparkles size={16} /> AI Assist
           </button>
           <button
-            onClick={() => setIsComposeOpen(false)}
+            onClick={handlesend}
             className="flex items-center gap-4 bg-[#0f172a] text-white pl-8 pr-4 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-black transition-all group"
           >
             Send

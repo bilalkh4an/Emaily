@@ -1,5 +1,4 @@
 import { Ollama } from 'ollama'; // Import the Ollama class
-import { collection } from './db.js';
 import { EmailMemory } from './models/EmailMemory.js';
 import 'dotenv/config';
 

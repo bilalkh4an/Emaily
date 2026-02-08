@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
-const voiceDNASchema = new mongoose.Schema({
+const voiceDNASchema = new mongoose.Schema(
+  {
   userId: { type: String, required: true, unique: true },
   voiceDNA: {
     vocabulary: mongoose.Schema.Types.Mixed,
@@ -11,7 +12,13 @@ const voiceDNASchema = new mongoose.Schema({
     insights: mongoose.Schema.Types.Mixed
   },
   createdAt: { type: Date, default: Date.now }
-});
+},
+
+{ 
+  collection: 'UserWritingProfiles' // <--- Set your custom table name here
+}
+
+);
 
 // Using Mixed types because the AI output structure can vary slightly
 export const VoiceDNA = mongoose.model('VoiceDNA', voiceDNASchema);

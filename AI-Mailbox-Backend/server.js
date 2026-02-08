@@ -3,7 +3,10 @@ import { setupDatabase } from './db.js';
 import { extractVoiceDNA, saveSentEmail } from './training.js';
 import { VoiceDNA } from './models/VoiceDNA.js'; // Import the new model
 import { EmailMemory } from './models/EmailMemory.js';
+import { EmailAccount } from './models/EmailAccount.js';
 import { generateAIPrompt } from './drafting.js';
+import { fetchEmails, sentEmail } from "./Controller/emailService.js"; // path to function file
+
 import cors from 'cors';
 // 1. THIS MUST BE THE FIRST LINE
 import 'dotenv/config'; 
@@ -26,6 +29,31 @@ app.use(cors());
 // ENDPOINT 1: Initial Setup (The 10 Emails)
 // Use this once to "train" the system on a user's voice
 const ollama = new Ollama({ host: 'http://185.119.109.61:11434' });
+
+
+app.get('/api/emails/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const emails = await fetchEmails(userId);
+        res.json(emails);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post("/api/sentemail", async (req, res) => {
+    try {
+        const result = await sentEmail();
+        res.json(result);
+    } catch (error) {
+        console.error("Send email error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+
 
 app.post('/api/setup-voice', async (req, res) => {
   try {
@@ -72,9 +100,6 @@ app.post('/api/setup-voice', async (req, res) => {
 
 
 // ENDPOINT 2: Draft a Reply
-// React calls this when a new email arrives
-
-
 app.post('/api/draft', async (req, res) => {
   try {
     const { userId, threadId, prompt, sessionHistory = [] } = req.body;    
@@ -102,6 +127,8 @@ app.post('/api/draft', async (req, res) => {
        ...dbHistory.map(msg => `${msg.role === 'user' ? 'Client' : 'Me'}: ${msg.content}`),
        ...sessionHistory.map(msg => `${msg.role === 'user' ? 'User Instruction' : 'AI Draft'}: ${msg.content}`)
     ].join('\n');
+
+    
     
     // 2. Call generateAIPrompt
     // Note: We use res.write to push tokens to the frontend in real-time
@@ -146,6 +173,31 @@ app.post('/api/confirm-send', async (req, res) => {
   } catch (error) {
     console.error("Save Memory Error:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/settings/add-imap', async (req, res) => {
+  try {
+    const { userId, email, imapHost, imapPort, password } = req.body;
+
+    // 1. Basic Validation
+    if (!email || !password || !imapHost) {
+      return res.status(400).json({ error: "Missing required IMAP fields." });
+    }
+
+    // 2. Save or Update the account settings
+    const account = await EmailAccount.findOneAndUpdate(
+      { email }, // Find by email
+      { userId, email, imapHost, imapPort, password }, // Update these fields
+      { upsert: true, new: true } // Create if doesn't exist
+    );
+
+    console.log(`📧 IMAP Account linked: ${email} for user ${userId}`);
+    res.json({ success: true, message: "Email account linked successfully!", account });
+
+  } catch (error) {
+    console.error("IMAP Save Error:", error);
+    res.status(500).json({ error: "Failed to link email account." });
   }
 });
 
