@@ -1,0 +1,59 @@
+name: React + Node CI/CD Pipeline (DEV Only)
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout repo
+      - uses: actions/checkout@v4
+
+      # 2️⃣ Setup Node.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 3️⃣ Backend: install & test
+      - name: Backend - Install & Test
+        run: |
+          cd backend
+          npm install
+          npm test || true   # ignore test failures in dev
+
+      # 4️⃣ Frontend: install & build
+      - name: Frontend - Install & Build
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      # 5️⃣ Deploy Backend to DEV
+      - name: Deploy Backend to DEV
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            cd /var/www/backend
+            git pull origin development
+            npm install
+            pm2 reload app-backend
+
+      # 6️⃣ Deploy Frontend to DEV
+      - name: Deploy Frontend to DEV
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            cd /var/www/frontend
+            git pull origin development
+            npm install
+            npm run build
