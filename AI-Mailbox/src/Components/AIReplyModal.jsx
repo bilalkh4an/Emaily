@@ -28,7 +28,7 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
       const updatedHistory = [...sessionHistory, currentMessage];
       setDrafts([]); // Clear previous drafts if you want to see it live
 
-      const response = await fetch("https://backend.emaily.uk/api/draft", {
+      const response = await fetch("http://localhost:3000/api/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

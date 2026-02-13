@@ -5,7 +5,7 @@ import { VoiceDNA } from './models/VoiceDNA.js'; // Import the new model
 import { EmailMemory } from './models/EmailMemory.js';
 import { EmailAccount } from './models/EmailAccount.js';
 import { generateAIPrompt } from './drafting.js';
-import { fetchEmails, sentEmail } from "./Controller/emailService.js"; // path to function file
+import { fetchEmails, fetchInboxEmails, sentEmail } from "./Controller/emailService.js"; // path to function file
 
 import cors from 'cors';
 // 1. THIS MUST BE THE FIRST LINE
@@ -42,9 +42,22 @@ app.get('/api/emails/:userId', async (req, res) => {
     }
 });
 
-app.post("/api/sentemail", async (req, res) => {
+app.get('/api/inbox-emails/:userId', async (req, res) => {
+    const { userId } = req.params;
+
     try {
-        const result = await sentEmail();
+        const emails = await fetchInboxEmails(userId);
+        res.json(emails);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post("/api/sentemail", async (req, res) => {
+  const { to,subject,body,userId,inReplyToId } = req.body;
+  
+    try {
+        const result = await sentEmail(to,subject,body,userId,inReplyToId);
         res.json(result);
     } catch (error) {
         console.error("Send email error:", error);
@@ -160,14 +173,14 @@ app.post('/api/draft', async (req, res) => {
 // React calls this when the user clicks "Send"
 app.post('/api/confirm-send', async (req, res) => {
   try {
-    const { userId, threadId, incoming, finalReply } = req.body;
+    const { userId, threadId, finalReply } = req.body;
 
-    if (!threadId) {
+    if (!threadId) { 
       return res.status(400).json({ error: "threadId is required to save memory." });
     }
 
     // Pass everything to the helper function
-    await saveSentEmail(userId, threadId, incoming, finalReply);
+    await saveSentEmail(userId, threadId, finalReply);
     
     res.json({ status: "Memory Updated", threadId });
   } catch (error) {

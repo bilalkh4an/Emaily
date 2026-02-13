@@ -1,18 +1,32 @@
 import React from "react";
-import {Search} from "lucide-react";
+import { Search } from "lucide-react";
 
-const EmailList = ({ filteredEmails, setSelectedEmail, selectedEmail }) => {
+const EmailList = ({
+  filteredEmails,
+  setSelectedEmail,
+  selectedEmail,
+  activeFolder,
+}) => {
   return (
-    <div className="flex-1 overflow-y-auto pb-24 
+    <div
+      className="flex-1 overflow-y-auto pb-24 
       [&::-webkit-scrollbar]:w-1.5
       [&::-webkit-scrollbar-track]:bg-transparent
       [&::-webkit-scrollbar-thumb]:bg-slate-200
       [&::-webkit-scrollbar-thumb]:rounded-full
-      hover:[&::-webkit-scrollbar-thumb]:bg-slate-300">
-      
+      hover:[&::-webkit-scrollbar-thumb]:bg-slate-300"
+    >
       {filteredEmails.map((email) => {
         const isActive = selectedEmail === email.id;
-        
+        const currentFolder = activeFolder; // better: pass this as prop
+
+        console.log(filteredEmails);
+        const folderMessages = email.messages.filter(
+          (m) => m.folder === currentFolder,
+        );
+
+        const Message = folderMessages[0] || email.messages[0];
+
         return (
           <div
             key={email.id}
@@ -27,42 +41,57 @@ const EmailList = ({ filteredEmails, setSelectedEmail, selectedEmail }) => {
             )}
 
             {/* Avatar Section */}
-            <div className={`relative flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center overflow-hidden font-bold transition-transform duration-200 group-hover:scale-105 ${
-              isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-100" : "bg-white border border-gray-200 text-gray-500 shadow-sm"
-            }`}>
+            <div
+              className={`relative flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center overflow-hidden font-bold transition-transform duration-200 group-hover:scale-105 ${
+                isActive
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-100"
+                  : "bg-white border border-gray-200 text-gray-500 shadow-sm"
+              }`}
+            >
               {email.avatar ? (
                 <img
-                  src={email.avatar}
+                  src={Message?.avatar}
                   alt={email.sender}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="text-sm tracking-tighter uppercase">{email.sender?.charAt(0)}</span>
+                <span className="text-sm tracking-tighter uppercase">
+                  {email.sender?.charAt(0)}
+                </span>
               )}
             </div>
 
             {/* Content Section */}
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-center mb-1">
-                <span className={`text-[15px] truncate transition-colors ${
-                  email.unread ? "font-black text-gray-900" : "font-semibold text-gray-600"
-                }`}>
-                  {email.sender}
+                <span
+                  className={`text-[15px] truncate transition-colors ${
+                    email.unread
+                      ? "font-black text-gray-900"
+                      : "font-semibold text-gray-600"
+                  }`}
+                >
+                  {Message?.sender}
                 </span>
                 <span className="text-[12px] font-bold text-gray-400 whitespace-nowrap ml-3">
-                  {email.time}
+                  {Message?.time}
                 </span>
               </div>
 
-              <h4 className={`text-[14px] truncate mb-1 transition-colors ${
-                email.unread ? "font-bold text-gray-800" : "font-medium text-gray-500"
-              }`}>
+              <h4
+                className={`text-[14px] truncate mb-1 transition-colors ${
+                  email.unread
+                    ? "font-bold text-gray-800"
+                    : "font-medium text-gray-500"
+                }`}
+              >
                 {email.subject}
               </h4>
 
               {/* Email Snippet (Optional - adds a lot of value) */}
               <p className="text-[13px] text-gray-400  line-clamp-1 leading-relaxed">
-                {email.messages?.[0]?.body || "No additional content available for this preview..."}
+                {Message?.body ||
+                  "No additional content available for this preview..."}
               </p>
             </div>
 
@@ -71,21 +100,21 @@ const EmailList = ({ filteredEmails, setSelectedEmail, selectedEmail }) => {
               {email.unread && (
                 <div className="w-2.5 h-2.5 bg-blue-600 rounded-full shadow-sm shadow-blue-200"></div>
               )}
-              {email.starred && (
-                <div className="text-amber-400">★</div>
-              )}
+              {email.starred && <div className="text-amber-400">★</div>}
             </div>
           </div>
         );
       })}
-      
+
       {filteredEmails.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 px-10 text-center">
           <div className="bg-gray-50 p-4 rounded-full mb-4">
             <Search size={24} className="text-gray-300" />
           </div>
           <p className="text-gray-500 font-bold">No emails found</p>
-          <p className="text-gray-400 text-sm">Try adjusting your search or filters</p>
+          <p className="text-gray-400 text-sm">
+            Try adjusting your search or filters
+          </p>
         </div>
       )}
     </div>

@@ -33,6 +33,7 @@ const Compose = ({
   composeData,
   setComposeData,
   setIsAIReplyOpen,
+  openEmail,
 }) => {
   const fileInputRef = useRef(null);
   const [showEmojis, setShowEmojis] = useState(false);
@@ -76,16 +77,19 @@ const Compose = ({
 
   if (!isComposeOpen) return null;
 
-  const handlesend = async () => {
+  const handlesend = async () => {  
+
     try {
-      const response = await fetch("https://backend.emaily.uk/api/confirm-send", {
+      
+      const response = await fetch("http://localhost:3000/api/sentEmail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: "bilal_khan", // Using passed prop or default
-          threadId: "PROXMOX_002",
-          incoming: "hellow",
-          finalReply: "hey",
+          to: composeData.to,
+          subject:composeData.subject,
+          body:editor.getText(),
+          inReplyToId:openEmail?.threadid || "",
         }),
       });
 
@@ -96,7 +100,8 @@ const Compose = ({
     } catch (error) {
       alert(error);
       console.error("Failed to generate draft:", error);
-    }
+    } 
+
   };
 
   const ToolbarBtn = ({ onClick, icon: Icon, active, title }) => (
