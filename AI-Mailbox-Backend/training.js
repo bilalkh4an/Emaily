@@ -36,28 +36,11 @@ async function extractVoiceDNA(emails) {
   }
 }
 
-/**
- * STEP 2: Memory Storage
- * Saves an email and its vector embedding to MongoDB.
- */
-async function saveSentEmail(userId, threadId, finalReply) {
-  // 2. Save Your Reply (The assistant)
-  const replyEntry = new EmailMemory({
-    userId,
-    threadId,
-    role: "assistant",
-    content: finalReply,
-  });
-
-  // Save both to MongoDB
-  await Promise.all([replyEntry.save()]);
-
-  console.log(`💾 Saved thread ${threadId} for user ${userId}`);
-}
 
 async function saveFetchEmail(
   userId,
   folder,
+  account,
   sender,
   to,
   subject,
@@ -81,6 +64,7 @@ async function saveFetchEmail(
       { 
         $set: { 
           folder,
+          account,
           sender,
           subject,
           time,
@@ -103,4 +87,4 @@ async function saveFetchEmail(
   }
 }
 
-export { extractVoiceDNA, saveSentEmail, saveFetchEmail };
+export { extractVoiceDNA, saveFetchEmail };

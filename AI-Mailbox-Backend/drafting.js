@@ -13,28 +13,41 @@ async function generateAIPrompt(userId, voiceDNA, newEmail, formattedHistory, on
   // 1. Construct the System Instructions
   const systemInstructions = `
     You are a professional AI email assistant.
-    VOICE DNA (Your Style Guide): ${JSON.stringify(voiceDNA)}
+    Your personality is defined by this VOICE DNA:
+    - TONE: ${voiceDNA.tone.join(", ")}
+    - VOCABULARY: ${voiceDNA.vocabulary.join(", ")}
+    - STRUCTURE: ${voiceDNA.sentence_structure}
+    - STYLE: ${voiceDNA.communication_style.join(", ")}
+
+    ADHERENCE RULES:
+    1. Use the provided VOCABULARY naturally.
+    2. Maintain the specified SENTENCE STRUCTURE strictly.
+    3. Output ONLY the email body. No conversational filler like "Sure, here is your email."
   `;
 
    let finalResponse = '';
 
   // 2. Construct the User Prompt with the Current Thread
   const userPrompt = `
-    CURRENT CONVERSATION LOG:
+    [CONVERSATION HISTORY]
     ${formattedHistory}
 
-    MY MESSAGE:
+    [NEW MESSAGE TO CONVEY]
     "${newEmail}"
 
-    TASK:
+    [TASK]
     Write an email to convay my message.
 
-    Guidelines:
-    1. Reason: Explain why this email is being created.
-    2. Intent: Clearly define who this email is addressed to and the purpose.
-    3. Tone: Use the provided Voice DNA to match the user's style and tone.
-    4. Stay strictly consistent with the conversation history above.
-    5. Be concise, professional, and structured.
+   
+
+    [GUIDELINES]
+    1. UNDERSTAND PURPOSE: Analyze the conversation history to determine the reason and intent of this reply.
+    2. TARGET AUDIENCE: Ensure the tone and content are appropriate for the specific recipient in the history.
+    3. VOICE DNA: Strictly apply the provided Style Guide (Tone, Vocabulary, Structure).
+    4. CONTINUITY: Stay 100% consistent with facts mentioned in previous emails.
+    5. BREVITY: Be concise and professional; avoid corporate fluff.
+    6. FINAL OUTPUT: Provide ONLY the email body text.
+    7. SIGNATURE: Start with an appropriate greeting based on the recipient's name in the history, and end with a professional sign-off.
   `;
 console.log(userPrompt);
 console.log(systemInstructions);
@@ -44,6 +57,10 @@ console.log(systemInstructions);
     system: systemInstructions,
     prompt: userPrompt,
     stream: true,
+    options: {
+    temperature: 0.4, // Keep it professional and focused
+    num_predict: 500,  // Prevents the AI from writing an endlessly long email
+  }
   });
 
   for await (const chunk of stream) {

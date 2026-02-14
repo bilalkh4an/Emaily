@@ -45,9 +45,10 @@ const Input = ({
 const SettingsModal = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState("Profile");
   const [configStage, setConfigStage] = useState("list");
+  const [emailaddress, setEmailaddress] = useState("");
   const [imapHost, setImapHost] = useState("");
-  const [imapPort, setImapPort] = useState("993");
-  const [security, setSecurity] = useState("SSL/TLS");
+  const [imapPort, setImapPort] = useState("");
+  const [security, setSecurity] = useState("");
   const [smtpHost, setSmtpHost] = useState("");
   const [password, setPassword] = useState("");
 
@@ -70,10 +71,11 @@ const SettingsModal = ({ isOpen, onClose }) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: "bilal_khan", // Using passed prop or default
-            email: "info@emaily.uk",
-            imapHost: "mail.emaily.uk",
-            imapPort: 993,
-            password: "Pakistan123!@#",
+            email: emailaddress,
+            imapHost: imapHost,
+            imapPort: imapPort,
+            security: security,
+            password: password,
           }),
         },
       );
@@ -385,14 +387,22 @@ const SettingsModal = ({ isOpen, onClose }) => {
                       <Server size={16} /> Incoming Server (IMAP)
                     </div>
                     <Input
+                      label="Email Address"
+                      type="email"
+                      placeholder="info@emaily.uk"
+                      value={emailaddress}
+                      onChange={(e) => setEmailaddress(e.target.value)}
+                    />
+                    <Input
                       label="Host"
-                      placeholder="imap.mail.me.com"
+                      placeholder="imap.mail.uk"
                       value={imapHost}
                       onChange={(e) => setImapHost(e.target.value)}
                     />
                     <div className="grid grid-cols-2 gap-3 sm:gap-4">
                       <Input
                         label="Port"
+                        type="number"
                         placeholder="993"
                         value={imapPort}
                         onChange={(e) => setImapPort(e.target.value)}
@@ -411,7 +421,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     </div>
                     <Input
                       label="SMTP Host"
-                      placeholder="smtp.mail.me.com"
+                      placeholder="smtp.mail.uk"
                       value={smtpHost}
                       onChange={(e) => setSmtpHost(e.target.value)}
                     />

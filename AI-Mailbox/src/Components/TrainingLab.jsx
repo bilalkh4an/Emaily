@@ -17,14 +17,15 @@ import {
   Activity,
 } from "lucide-react";
 
-const TrainingLab = ({ isOpen, onClose }) => {
-  const [selectedAccount, setSelectedAccount] = useState("work@corp.com");
-  const [mode, setMode] = useState("sent");
+const TrainingLab = ({ isOpen, onClose, account }) => {
+  const [selectedAccount, setSelectedAccount] = useState(account[1]);
+  const [mode, setMode] = useState("manual");
   const [inputText, setInputText] = useState("");
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [remainingSamples, setRemainingSamples] = useState(10);
   const [isTraining, setIsTraining] = useState(false);
   const [trainStatus, setTrainStatus] = useState("");
+  const [inboxdata, setInboxdata] = useState([{}]);
 
   const showScreenSize = () => {
     alert(`Width: ${window.innerWidth}px, Height: ${window.innerHeight}px`);
@@ -39,6 +40,39 @@ const TrainingLab = ({ isOpen, onClose }) => {
   useEffect(() => {
     setRemainingSamples(10 - currentSamples.length);
   }, [currentSamples.length]);
+
+  useEffect(() => {
+    fetchEmailSent();
+    console.log("here = "+inboxdata)
+  }, []);
+
+  const fetchEmailSent = async () => {
+    try {
+      const res = await fetch(
+        "http://localhost:3000/api/emails/conversation/bilal_khan",
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch emails");
+      }
+
+      const result = await res.json(); // 👈 important
+
+      const emailList = result.flatMap((item) =>
+        item.messages
+          .filter((msg) => msg.folder === "Sent")
+          .map((msg) => ({
+            subject: item.subject,
+            body: msg.body,
+          })),
+      );
+
+      setInboxdata(emailList)
+    } catch (error) {
+      console.error("Error fetching emails:", error);
+    } finally {
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -63,40 +97,41 @@ const TrainingLab = ({ isOpen, onClose }) => {
   };
 
   const trainVoiceModel = async () => {
-  if (currentSamples.length < 10) return;
+    if (currentSamples.length < 10) return;
 
-  try {
-    setIsTraining(true);
-    setTrainStatus("");
+    try {
+      setIsTraining(true);
+      setTrainStatus("");
 
-    const response = await fetch("https://backend.emaily.uk/api/setup-voice", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: selectedAccount, // identity-based training
-        initialEmails: currentSamples.map(s => s.body),
-      }),
-    });
+      const response = await fetch(
+        "https://backend.emaily.uk/api/setup-voice",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: selectedAccount, // identity-based training
+            initialEmails: currentSamples.map((s) => s.body),
+          }),
+        },
+      );
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data?.message || "Training failed");
+      if (!response.ok) {
+        throw new Error(data?.message || "Training failed");
+      }
+
+      setTrainStatus("✅ Voice DNA trained successfully");
+      console.log("Training success:", data);
+    } catch (error) {
+      console.error(error);
+      setTrainStatus("❌ Failed to train voice model");
+    } finally {
+      setIsTraining(false);
     }
-
-    setTrainStatus("✅ Voice DNA trained successfully");
-    console.log("Training success:", data);
-
-  } catch (error) {
-    console.error(error);
-    setTrainStatus("❌ Failed to train voice model");
-  } finally {
-    setIsTraining(false);
-  }
-};
-
+  };
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center p-0 xl:p-10">
@@ -165,7 +200,7 @@ const TrainingLab = ({ isOpen, onClose }) => {
               </button>
             </div>
             <div className="space-y-2">
-              {["work@corp.com", "personal@me.com"].map((email) => (
+              {account.map((email) => (
                 <button
                   key={email}
                   onClick={() => {
@@ -265,24 +300,7 @@ const TrainingLab = ({ isOpen, onClose }) => {
             </p>
             {mode === "sent" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 xl:gap-6">
-                {[
-                  {
-                    s: "Project Alpha Roadmap",
-                    b: "Attached is the latest schedule for our Q1 product rollout.",
-                  },
-                  {
-                    s: "Re: Client Feedback",
-                    b: "I agree with the direction, but let's sharpen the value prop.",
-                  },
-                  {
-                    s: "Weekly Sync",
-                    b: "Moving the meeting to Wednesday at 2pm.",
-                  },
-                  {
-                    s: "Internal Brief",
-                    b: "Key takeaways from the summit are listed below.",
-                  },
-                ].map((item, i) => (
+                {inboxdata.map((item, i) => (
                   <div
                     key={i}
                     className="group p-5 xl:p-6 bg-white border border-slate-200 rounded-[1.5rem] xl:rounded-[2rem] hover:border-indigo-400 transition-all flex flex-col justify-between h-48 xl:h-56 shadow-sm"
@@ -293,17 +311,17 @@ const TrainingLab = ({ isOpen, onClose }) => {
                           <Database size={18} />
                         </div>
                         <button
-                          onClick={() => handleAdd(item.s, item.b)}
+                          onClick={() => handleAdd(item.subject, item.body)}
                           className="px-4 py-2 bg-slate-900 text-white text-[10px] font-black rounded-lg uppercase tracking-widest active:scale-90 transition-transform"
                         >
                           Add
                         </button>
                       </div>
                       <h4 className="font-bold text-slate-900 mb-1 text-sm xl:text-base">
-                        {item.s}
+                         Subject: {item.subject}
                       </h4>
                       <p className="text-[11px] xl:text-xs text-slate-400 leading-relaxed line-clamp-2 italic font-medium">
-                        "{item.b}"
+                         {item.body}
                       </p>
                     </div>
                   </div>

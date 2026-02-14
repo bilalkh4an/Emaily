@@ -6,38 +6,6 @@ import { saveFetchEmail } from "../training.js";
 import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 
-// function groupByThread(emails) {
-//   const threads = {};
-//   const messageMap = {};
-
-//   // Index by Message-ID
-//   emails.forEach((email) => {
-//     if (email.messageId) {
-//       messageMap[email.messageId] = email;
-//     }
-//   });
-
-//   emails.forEach((email) => {
-//     let threadId =
-//       email.inReplyTo ||
-//       (Array.isArray(email.references) && email.references[0]) ||
-//       email.messageId ||
-//       email.uid;
-
-//     if (!threads[threadId]) {
-//       threads[threadId] = [];
-//     }
-
-//     threads[threadId].push(email);
-//   });
-
-//   // Sort messages inside each thread by date
-//   Object.values(threads).forEach((thread) =>
-//     thread.sort((a, b) => new Date(a.date) - new Date(b.date)),
-//   );
-
-//   return threads;
-// }
 
 function getThreadId(email) {
   console.log("0");
@@ -204,9 +172,10 @@ export async function fetchEmails(userId) {
     // Step 2: Save each thread to DB
     threads.forEach((thread) => {
       console.log("In reply to = " + thread.bilal);
-      saveFetchEmail(
+      saveFetchEmail( 
         userId,
         thread.folder,
+        account.email, 
         thread.sender,
         thread.to,
         thread.subject,
@@ -226,8 +195,15 @@ export async function fetchEmails(userId) {
   }
 }
 
-export async function fetchInboxEmails(userId) {
+export async function fetchSentEmails(userId) { 
   const account = await EmailMemory.find({ userId });
+  if (!account) throw new Error("Account not found");
+  return account;
+}
+
+// Get Email Addresses list
+export async function EmailAccounts(userId) {
+  const account = await EmailAccount.find({ userId });
   if (!account) throw new Error("Account not found");
   return account;
 }

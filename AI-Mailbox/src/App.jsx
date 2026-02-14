@@ -19,154 +19,15 @@ function App() {
 
   const [allEmails, setAllEmails] = useState([]);
 
-  // const [allEmails, setAllEmails] = useState([
-  //   {
-  //     id: 1,
-  //     folder: "Inbox",
-  //     account: "Gmail",
-  //     sender: "Sara Johnson",
-  //     subject: "Project Update",
-  //     time: "2:45 PM",
-  //     unread: true,
-  //     avatar: "https://i.pravatar.cc/150?u=sara",
-  //     messages: [
-  //       {
-  //         id: 101,
-  //         sender: "Sara Johnson",
-  //         time: "2:45 PM",
-  //         body: "Hi Team,\n\nI'm happy to report that the project is moving along faster than expected. We should be ready for the demo by Friday.",
-  //         avatar: "https://i.pravatar.cc/150?u=sara",
-  //       },
-  //     ],
-  //   },
-  //   {
-  //     id: 2,
-  //     folder: "Inbox",
-  //     account: "Work IMAP",
-  //     sender: "Marketing Team",
-  //     subject: "Weekly Sync & Strategy",
-  //     time: "1:15 PM",
-  //     unread: true,
-  //     isGroup: true,
-  //     messages: [
-  //       {
-  //         id: 201,
-  //         sender: "Alex Rivera",
-  //         time: "11:00 AM",
-  //         body: "Does anyone have the latest conversion metrics for the spring campaign?",
-  //         avatar: "https://i.pravatar.cc/150?u=alex",
-  //       },
-  //       {
-  //         id: 202,
-  //         sender: "Marketing Team",
-  //         time: "1:15 PM",
-  //         body: "Just uploaded them to the shared drive! The ROI is looking much better than last month.",
-  //         avatar: "",
-  //       },
-  //     ],
-  //   },
-  //   {
-  //     id: 3,
-  //     folder: "Starred",
-  //     account: "Outlook",
-  //     sender: "David Lee",
-  //     subject: "Invoice #88291",
-  //     time: "12:30 PM",
-  //     unread: false,
-  //     avatar: "https://i.pravatar.cc/150?u=david",
-  //     messages: [
-  //       {
-  //         id: 301,
-  //         sender: "David Lee",
-  //         time: "12:30 PM",
-  //         body: "Hi, please find the invoice attached for the last sprint. Let me know if you have any questions.",
-  //         avatar: "https://i.pravatar.cc/150?u=david",
-  //       },
-  //     ],
-  //   },
-  //   {
-  //     id: 4,
-  //     folder: "Sent",
-  //     account: "Gmail",
-  //     sender: "James R.",
-  //     subject: "Re: Budget Report",
-  //     time: "Yesterday",
-  //     unread: false,
-  //     avatar: "https://i.pravatar.cc/150?u=james",
-  //     messages: [
-  //       {
-  //         id: 401,
-  //         sender: "James R.",
-  //         time: "Yesterday",
-  //         body: "Can you send the budget report by Friday? The board needs to review it before the weekend.",
-  //         avatar: "https://i.pravatar.cc/150?u=james",
-  //       },
-  //       {
-  //         id: 402,
-  //         sender: "Me",
-  //         time: "Yesterday",
-  //         body: "No problem, James. I'm finishing up the final charts now.",
-  //         avatar: "",
-  //       },
-  //       {
-  //         id: 403,
-  //         sender: "Me",
-  //         time: "Today",
-  //         body: "The report is attached. Let me know if you need anything else.",
-  //         avatar: "",
-  //       },
-  //     ],
-  //   },
-  //   {
-  //     id: 5,
-  //     folder: "Inbox",
-  //     account: "Gmail",
-  //     sender: "Support",
-  //     subject: "Your Ticket #12345",
-  //     time: "9:10 AM",
-  //     unread: false,
-  //     avatar: "https://i.pravatar.cc/150?u=support",
-  //     messages: [
-  //       {
-  //         id: 501,
-  //         sender: "Me",
-  //         time: "2 Days Ago",
-  //         body: "I'm having trouble logging into my account. I keep getting a 'Timeout' error.",
-  //         avatar: "",
-  //       },
-  //       {
-  //         id: 502,
-  //         sender: "Support",
-  //         time: "Yesterday",
-  //         body: "Hello! We are looking into this for you. Could you please clear your browser cache and try again?",
-  //         avatar: "https://i.pravatar.cc/150?u=support",
-  //       },
-  //       {
-  //         id: 503,
-  //         sender: "Me",
-  //         time: "Yesterday",
-  //         body: "That worked! Thanks for the quick response.",
-  //         avatar: "",
-  //       },
-  //       {
-  //         id: 504,
-  //         sender: "Support",
-  //         time: "9:10 AM",
-  //         body: "Great to hear! I'll close this ticket now. Have a nice day.",
-  //         avatar: "https://i.pravatar.cc/150?u=support",
-  //       },
-  //     ],
-  //   },
-  // ]);
-
   useEffect(() => {
     fetchEmails();
+    fetchEmailAccounts();
   }, []);
 
   const fetchEmails = async () => {
     try {
       const res = await fetch(
-        "http://localhost:3000/api/inbox-emails/bilal_khan",
+        "http://localhost:3000/api/emails/conversation/bilal_khan",
       );
 
       if (!res.ok) {
@@ -174,7 +35,6 @@ function App() {
       }
 
       const result = await res.json(); // 👈 important
-      console.log(result);
 
       const formatted = result.map((email) => ({
         id: email._id,
@@ -196,6 +56,29 @@ function App() {
     }
   };
 
+  const fetchEmailAccounts = async () => {
+    try {
+      const res = await fetch(
+        "http://localhost:3000/api/emailaccounts/bilal_khan",
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch emails");
+      }
+
+      const result = await res.json(); // 👈 important
+
+      // Extract only the email strings into a flat array
+      const emailList = result.map((item) => item.email);
+
+      // Combine "All Mail" with the fetched accounts
+      setAccount(["All Mail", ...emailList]);
+    } catch (error) {
+      console.error("Error fetching emails:", error);
+    } finally {
+    }
+  };
+
   const [folders, setFolders] = useState([
     "Inbox",
     "Starred",
@@ -203,13 +86,7 @@ function App() {
     "Archive",
     "Trash",
   ]);
-  const [account, setAccount] = useState([
-    "All Mail",
-    "Gmail",
-    "Outlook",
-    "Work IMAP",
-    "Business IMAP",
-  ]);
+  const [account, setAccount] = useState([]);
   const [activeFolder, setActiveFolder] = useState("Inbox");
   const [activeTab, setActiveTab] = useState("All Mail");
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
@@ -377,7 +254,11 @@ function App() {
         onClose={() => setIsSettingsOpen(false)}
       />
 
-      <TrainingLab isOpen={isLabOpen} onClose={() => setIsLabOpen(false)} />
+      <TrainingLab
+        isOpen={isLabOpen}
+        onClose={() => setIsLabOpen(false)}
+        account={account}
+      />
     </>
   );
 }

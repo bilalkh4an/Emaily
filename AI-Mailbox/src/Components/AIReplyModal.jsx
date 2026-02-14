@@ -27,13 +27,15 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
       const currentMessage = { role: "user", content: prompt };
       const updatedHistory = [...sessionHistory, currentMessage];
       setDrafts([]); // Clear previous drafts if you want to see it live
+      console.log(userId);
+      console.log(threadId);
 
       const response = await fetch("http://localhost:3000/api/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: userId || "bilal_khan", // Using passed prop or default
-          threadId: threadId || "PROXMOX_002",
+          userId: "bilal_khan", // Using passed prop or default
+          threadId: threadId || "<CAD41KV0Hi1umjSe9hUrr2seGJeq400x2iuHXV_btLXtDBL40Pg@mail.gmail.com>",
           prompt: prompt,
           sessionHistory: updatedHistory, // Sending the full session context
           tone,

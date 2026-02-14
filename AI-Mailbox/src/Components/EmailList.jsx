@@ -20,7 +20,6 @@ const EmailList = ({
         const isActive = selectedEmail === email.id;
         const currentFolder = activeFolder; // better: pass this as prop
 
-        console.log(filteredEmails);
         const folderMessages = email.messages.filter(
           (m) => m.folder === currentFolder,
         );
