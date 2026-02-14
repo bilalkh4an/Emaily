@@ -104,7 +104,7 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
       setTrainStatus("");
 
       const response = await fetch(
-        "https://backend.emaily.uk/api/setup-voice",
+        "http://localhost:3000/api/setup-voice",
         {
           method: "POST",
           headers: {

@@ -2,24 +2,236 @@ import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { EmailAccount } from "../models/EmailAccount.js";
 import nodemailer from "nodemailer";
-import { saveFetchEmail } from "../training.js";
 import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 
+export async function fetchMailbox(userId) {
+  const account = await EmailAccount.findOne({ userId });
+  if (!account) throw new Error("Account not found");
 
-function getThreadId(email) {
-  console.log("0");
-  if (Array.isArray(email.references) && email.references.length > 0) {
-    console.log("1");
-    return email.references[0];
-  }
+  const client = new ImapFlow({
+    host: account.imapHost,
+    port: account.imapPort || 993,
+    secure: true,
+    auth: { user: account.email, pass: account.password },
+  });
 
-  if (email.inReplyTo) {
-    console.log("2");
-    return email.inReplyTo;
+  try {
+    await client.connect();
+    const inboxLock = await client.getMailboxLock("INBOX");
+    const sentLock = await client.getMailboxLock("Sent");
+
+    let emails = [];
+    const folders = ["Inbox", "Sent"];
+
+    try {
+      for (const foldervalue of folders) {
+        const mailbox = await client.mailboxOpen(foldervalue);
+
+        // 2. SAFETY CHECK: If the folder has 0 messages, skip it
+        if (mailbox.exists === 0) {
+          console.log(`ℹ️ Folder "${foldervalue}" is empty. Skipping fetch.`);
+          continue;
+        }
+
+        for await (let message of client.fetch("1:*", {
+          source: true,
+          envelope: true,
+          uid: true,
+        })) {
+          const parsed = await simpleParser(message.source);
+
+          emails.push({
+            uid: message.uid,
+            messageId: parsed.messageId,
+            inReplyTo: parsed.inReplyTo,
+            references: parsed.references,
+            subject: parsed.subject,
+            from: parsed.from?.text,
+            to: parsed.to?.text,
+            date: parsed.date,
+            text: parsed.text,
+            folder: foldervalue, // keep folder per email
+          });
+        }
+      }
+    } finally {
+      inboxLock.release();
+      sentLock.release();
+    }
+
+    await client.logout();
+
+    // Step 1: Build threads from all fetched emails
+
+    let threads = buildThreads(emails).map((thread) => {
+      return {
+        ...thread,
+        to: thread.to, // fallback if `to` is missing
+        folder: "Inbox", // first message folder
+        avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(thread.sender)}`, // avatar
+      };
+    });
+
+    // Step 2: Save each thread to DB
+    threads.forEach((thread) => {
+      saveFetchEmail(
+        userId,
+        thread.folder,
+        account.email,
+        thread.sender,
+        thread.to,
+        thread.subject,
+        thread.time,
+        thread.messages.some((m) => m.unread), // unread flag
+        thread.avatar,
+        thread.messages,
+        thread.threadId,
+        "user",
+      );
+    });
+
+    return emails; // return to caller
+  } catch (error) {
+    console.error("IMAP Error:", error);
+    throw error;
   }
-  console.log("3");
-  return email.messageId;
+}
+
+export async function fetchSentEmails(userId) {
+  const account = await EmailMemory.find({ userId });
+  if (!account) throw new Error("Account not found");
+  return account;
+}
+
+// Get Email Addresses list
+export async function EmailAccounts(userId) {
+  const account = await EmailAccount.find({ userId });
+  if (!account) throw new Error("Account not found");
+  return account;
+}
+
+export async function sentEmail(to, subject, body, userId, inReplyToId) {
+  const transporter = nodemailer.createTransport({
+    host: "mail.emaily.uk",
+    port: 465,
+    secure: true,
+    auth: {
+      user: "info@emaily.uk",
+      pass: "Pakistan123!@#",
+    },
+  });
+
+  console.log(inReplyToId);
+
+  const mailOptions = {
+    from: "info@emaily.uk",
+    to,
+    subject,
+    text: body,
+    // --- THREADING HEADERS ---
+    // If inReplyToId exists, add it to the headers
+    ...(inReplyToId && {
+      inReplyTo: inReplyToId,
+    }),
+  };
+
+  try {
+    // 1️⃣ Send via SMTP
+    const info = await transporter.sendMail(mailOptions);
+    const finalMessageId = info.messageId; // This is the 'Real' ID the receiver sees
+    console.log("Email Sent vis SMTP ID = " + finalMessageId);
+
+    // 2️⃣ Build the IMAP copy using that EXACT same ID
+    const composer = new MailComposer({
+      ...mailOptions,
+      messageId: finalMessageId, // 👈 THIS IS THE FIX: It forces both to be the same
+    });
+
+    const rawMessage = await new Promise((resolve, reject) => {
+      composer.compile().build((err, message) => {
+        if (err) reject(err);
+        else resolve(message);
+      });
+    });
+
+    // 3️⃣ Connect to IMAP and append to Sent
+    const client = new ImapFlow({
+      host: "mail.emaily.uk",
+      port: 993,
+      secure: true,
+      auth: {
+        user: "info@emaily.uk",
+        pass: "Pakistan123!@#",
+      },
+      logger: false,
+    });
+
+    await client.connect();
+    try {
+      await client.append("INBOX.Sent", rawMessage, ["\\Seen"]);
+      console.log("📁 Saved to Roundcube Sent folder");
+    } finally {
+      await client.logout();
+    }
+  } catch (error) {
+    console.error("Send email error:", error);
+    throw error;
+  }
+}
+
+async function saveFetchEmail(
+  userId,
+  folder,
+  account,
+  sender,
+  to,
+  subject,
+  time,
+  unread,
+  avatar,
+  messages,
+  threadId,
+  role,
+) {
+  try {
+    if (!threadId) {
+      console.error("Skipping save: No threadId provided");
+      return;
+    }
+    // 2. Sort messages descending by date (latest first)
+    const sortedMessages = messages.sort(
+      (a, b) => new Date(b.date) - new Date(a.date),
+    );
+
+    const result = await EmailMemory.findOneAndUpdate(
+      { userId: userId, threadId: threadId },
+      {
+        $set: {
+          folder,
+          account,
+          sender,
+          subject,
+          time,
+          unread,
+          avatar,
+          messages: sortedMessages, // Use the sorted array here
+          role: "user",
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      },
+    );
+
+    console.log(
+      `💾 Sync Successful: Thread ${threadId} saved with ${sortedMessages.length} messages in order.`,
+    );
+  } catch (error) {
+    console.error("❌ MongoDB Update Error:", error);
+  }
 }
 
 function buildThreads(emails) {
@@ -98,181 +310,4 @@ function buildThreads(emails) {
 
   // Sort threads by last message time descending
   return threads.sort((a, b) => new Date(b.time) - new Date(a.time));
-}
-
-export async function fetchEmails(userId) {
-  const account = await EmailAccount.findOne({ userId });
-  if (!account) throw new Error("Account not found");
-
-  const client = new ImapFlow({
-    host: account.imapHost,
-    port: account.imapPort || 993,
-    secure: true,
-    auth: { user: account.email, pass: account.password },
-  });
-
-  try {
-    await client.connect();
-    const inboxLock = await client.getMailboxLock("INBOX");
-    const sentLock = await client.getMailboxLock("Sent");
-
-    let emails = [];
-    const folders = ["Inbox", "Sent"];
-
-    try {
-      for (const foldervalue of folders) {
-        const mailbox = await client.mailboxOpen(foldervalue);
-
-        // 2. SAFETY CHECK: If the folder has 0 messages, skip it
-        if (mailbox.exists === 0) {
-          console.log(`ℹ️ Folder "${foldervalue}" is empty. Skipping fetch.`);
-          continue;
-        }
-
-        for await (let message of client.fetch("1:*", {
-          source: true,
-          envelope: true,
-          uid: true,
-        })) {
-          const parsed = await simpleParser(message.source);
-
-          emails.push({
-            uid: message.uid,
-            messageId: parsed.messageId,
-            inReplyTo: parsed.inReplyTo,
-            references: parsed.references,
-            subject: parsed.subject,
-            from: parsed.from?.text,
-            to: parsed.to?.text,
-            date: parsed.date,
-            text: parsed.text,
-            folder: foldervalue, // keep folder per email
-          });
-        }
-      }
-    } finally {
-      inboxLock.release();
-      sentLock.release();
-    }
-
-    await client.logout();
-
-    // Step 1: Build threads from all fetched emails
-
-    let threads = buildThreads(emails).map((thread) => {
-      console.log(thread.to);
-      return {
-        ...thread,
-        to: thread.to, // fallback if `to` is missing
-        folder: "Inbox", // first message folder
-        avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(thread.sender)}`, // avatar
-      };
-    });
-
-    // Step 2: Save each thread to DB
-    threads.forEach((thread) => {
-      console.log("In reply to = " + thread.bilal);
-      saveFetchEmail( 
-        userId,
-        thread.folder,
-        account.email, 
-        thread.sender,
-        thread.to,
-        thread.subject,
-        thread.time,
-        thread.messages.some((m) => m.unread), // unread flag
-        thread.avatar,
-        thread.messages,
-        thread.threadId,
-        "user",
-      );
-    });
-
-    return emails; // return to caller
-  } catch (error) {
-    console.error("IMAP Error:", error);
-    throw error;
-  }
-}
-
-export async function fetchSentEmails(userId) { 
-  const account = await EmailMemory.find({ userId });
-  if (!account) throw new Error("Account not found");
-  return account;
-}
-
-// Get Email Addresses list
-export async function EmailAccounts(userId) {
-  const account = await EmailAccount.find({ userId });
-  if (!account) throw new Error("Account not found");
-  return account;
-}
-
-export async function sentEmail(to, subject, body, userId, inReplyToId) {
-  const transporter = nodemailer.createTransport({
-    host: "mail.emaily.uk",
-    port: 465,
-    secure: true,
-    auth: {
-      user: "info@emaily.uk",
-      pass: "Pakistan123!@#",
-    },
-  });
-
-  console.log(inReplyToId);
-
-  const mailOptions = {
-    from: "info@emaily.uk",
-    to,
-    subject,
-    text: body,
-    // --- THREADING HEADERS ---
-    // If inReplyToId exists, add it to the headers
-    ...(inReplyToId && {
-      inReplyTo: inReplyToId,
-    }),
-  };
-
-  try {
-    // 1️⃣ Send via SMTP
-    const info = await transporter.sendMail(mailOptions);
-    const finalMessageId = info.messageId; // This is the 'Real' ID the receiver sees
-    console.log("Email Sent vis SMTP ID = "+finalMessageId)
-
-    // 2️⃣ Build the IMAP copy using that EXACT same ID
-    const composer = new MailComposer({
-      ...mailOptions,
-      messageId: finalMessageId, // 👈 THIS IS THE FIX: It forces both to be the same
-    });
-
-    const rawMessage = await new Promise((resolve, reject) => {
-      composer.compile().build((err, message) => {
-        if (err) reject(err);
-        else resolve(message);
-      });
-    });
-
-    // 3️⃣ Connect to IMAP and append to Sent
-    const client = new ImapFlow({
-      host: "mail.emaily.uk",
-      port: 993,
-      secure: true,
-      auth: {
-        user: "info@emaily.uk",
-        pass: "Pakistan123!@#",
-      },
-      logger: false,
-    });
-
-    await client.connect();
-    try {
-      await client.append("INBOX.Sent", rawMessage, ["\\Seen"]);
-      console.log("📁 Saved to Roundcube Sent folder");
-    } finally {
-      await client.logout();
-    }
-  } catch (error) {
-    console.error("Send email error:", error);
-    throw error;
-  }
 }
