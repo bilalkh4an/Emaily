@@ -11,6 +11,7 @@ const ReadingPane = ({
   const handleAction = (type, email) => {
     let prefix = type === "reply" ? "Re: " : "Fwd: ";
     setComposeData({
+      from: email.account,
       to: type === "reply" ? email.sender : "",
       subject: `${prefix}${email.subject}`,
       body: `\n\n--- Original Message ---\nFrom: ${email.sender}\n\n${email.messages[0].body}`,

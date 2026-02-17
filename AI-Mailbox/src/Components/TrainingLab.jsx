@@ -47,9 +47,15 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
   }, []);
 
   const fetchEmailSent = async () => {
+    const token = localStorage.getItem("token"); // 👈 Get token
     try {
       const res = await fetch(
         "http://localhost:3000/api/emails/conversation/bilal_khan",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // 👈 Pass token
+          },
+        },
       );
 
       if (!res.ok) {

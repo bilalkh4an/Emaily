@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, act } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -34,6 +34,7 @@ const Compose = ({
   setComposeData,
   setIsAIReplyOpen,
   openEmail,
+  account,
 }) => {
   const fileInputRef = useRef(null);
   const [showEmojis, setShowEmojis] = useState(false);
@@ -76,20 +77,17 @@ const Compose = ({
   }, [composeData.body, editor]);
 
   if (!isComposeOpen) return null;
-
-  const handlesend = async () => {  
-
+  const handlesend = async () => {
     try {
-      
       const response = await fetch("http://localhost:3000/api/sentEmail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: "bilal_khan", // Using passed prop or default
           to: composeData.to,
-          subject:composeData.subject,
-          body:editor.getText(),
-          inReplyToId:openEmail?.threadid || "",
+          subject: composeData.subject,
+          body: editor.getText(),
+          inReplyToId: openEmail?.threadid || "",
         }),
       });
 
@@ -100,8 +98,7 @@ const Compose = ({
     } catch (error) {
       alert(error);
       console.error("Failed to generate draft:", error);
-    } 
-
+    }
   };
 
   const ToolbarBtn = ({ onClick, icon: Icon, active, title }) => (
@@ -139,6 +136,39 @@ const Compose = ({
 
       {/* Recipient Logic */}
       <div className="px-8 bg-white border-b border-gray-50">
+        {/* From Field */}
+        <div className="flex items-center border-b border-gray-100 py-4 group">
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest w-12 group-focus-within:text-blue-500 transition-colors">
+            From
+          </span>
+
+          {composeData.from ? (
+            /* Fixed text view when a value exists */
+            <div className="flex-1 font-bold text-gray-700 text-sm p-2">
+              {composeData.from}
+            </div>
+          ) : (
+            /* Dropdown view when no value is selected */
+            <select
+              value={composeData.from || ""}
+              onChange={(e) =>
+                setComposeData({ ...composeData, from: e.target.value })
+              }
+              className="flex-1 outline-none font-bold text-gray-700 text-sm p-2 bg-transparent cursor-pointer"
+            >
+              <option value="" disabled>
+                Select email
+              </option>
+              {account
+                .filter((acc) => acc !== "All Mail")
+                .map((acc, index) => (
+                  <option key={index} value={acc}>
+                    {acc}
+                  </option>
+                ))}
+            </select>
+          )}
+        </div>
         <div className="flex items-center border-b border-gray-100 py-4 group">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest w-12 group-focus-within:text-blue-500 transition-colors">
             To

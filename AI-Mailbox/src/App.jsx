@@ -11,23 +11,45 @@ import Compose from "./Components/Compose";
 import AIReplyModal from "./Components/AIReplyModal";
 import SettingsModal from "./Components/SettingsView";
 import TrainingLab from "./Components/TrainingLab";
+import AuthSystem from "./Components/AuthSystem"; // 👈 Import the UI we created
 
 function App() {
   window.onerror = function (msg, src, line, col) {
     alert(`Error: ${msg}\nLine: ${line}`);
   };
 
+  // 1. Change this: Initialize state directly from localStorage
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem("token") !== null;
+  });
+
   const [allEmails, setAllEmails] = useState([]);
+  const [account, setAccount] = useState([]);
 
   useEffect(() => {
-    fetchEmails();
-    fetchEmailAccounts();
-  }, []);
+    // Only fetch if we are actually authenticated
+    if (isAuthenticated) {
+      fetchEmails();
+      fetchEmailAccounts();
+    }
+  }, [isAuthenticated]);
+
+  // 2. Handle Logout
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsAuthenticated(false);
+  };
 
   const fetchEmails = async () => {
+    const token = localStorage.getItem("token"); // 👈 Get token
     try {
       const res = await fetch(
         "http://localhost:3000/api/emails/conversation/bilal_khan",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // 👈 Pass token
+          },
+        },
       );
 
       if (!res.ok) {
@@ -86,10 +108,9 @@ function App() {
     "Archive",
     "Trash",
   ]);
-  const [account, setAccount] = useState([]);
+
   const [activeFolder, setActiveFolder] = useState("Inbox");
   const [activeTab, setActiveTab] = useState("All Mail");
-  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
   const [isAIReplyOpen, setIsAIReplyOpen] = useState(false);
 
   const [selectedEmail, setSelectedEmail] = useState(null);
@@ -97,6 +118,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLabOpen, setIsLabOpen] = useState(false);
   const [composeData, setComposeData] = useState({
+    from: "",
     to: "",
     subject: "",
     body: "",
@@ -118,6 +140,11 @@ function App() {
 
     return matchesFolder && matchesAccount && matchesSearch;
   });
+
+  // 3. Conditional Rendering
+  if (!isAuthenticated) {
+    return <AuthSystem onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   const Avatar = ({ email, size = "w-12 h-12" }) => {
     if (email.isGroup)
@@ -157,6 +184,7 @@ function App() {
           setIsComposeOpen={setIsComposeOpen}
           setIsSettingsOpen={setIsSettingsOpen}
           setIsLabOpen={setIsLabOpen}
+          onLogout={handleLogout}
         />
 
         <main
@@ -171,8 +199,6 @@ function App() {
             Account={account}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
-            isAccountDropdownOpen={isAccountDropdownOpen}
-            setIsAccountDropdownOpen={setIsAccountDropdownOpen}
             setIsLabOpen={setIsLabOpen}
           />
 
@@ -237,6 +263,7 @@ function App() {
           setComposeData={setComposeData}
           setIsAIReplyOpen={setIsAIReplyOpen}
           openEmail={openEmail}
+          account={account}
         />
       </div>
 

@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb://185.119.109.60:27017/email_training_lab"; 
+const MONGO_URI = process.env.MONGO_URI; 
 
 // 1. Native Client (for your existing vector/collection logic)
 const client = new MongoClient(MONGO_URI);

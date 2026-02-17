@@ -35,7 +35,9 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: "bilal_khan", // Using passed prop or default
-          threadId: threadId || "<CAD41KV0Hi1umjSe9hUrr2seGJeq400x2iuHXV_btLXtDBL40Pg@mail.gmail.com>",
+          threadId:
+            threadId ||
+            "<CAD41KV0Hi1umjSe9hUrr2seGJeq400x2iuHXV_btLXtDBL40Pg@mail.gmail.com>",
           prompt: prompt,
           sessionHistory: updatedHistory, // Sending the full session context
           tone,
@@ -124,7 +126,7 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-end sm:items-center sm:pb-0 pb-safe z-[70] p-4">
-     <div className="bg-white w-full max-w-[900px] max-h-[90dvh] sm:max-h-[85dvh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="bg-white w-full max-w-[900px] max-h-[90dvh] sm:max-h-[85dvh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50">
           <div className="flex items-center gap-3">
@@ -178,10 +180,10 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
               </label>
               <div className="bg-white border-2 border-gray-200 rounded-2xl p-5 shadow-sm hover:border-blue-300 transition-all focus-within:border-blue-400 focus-within:shadow-md">
                 <textarea
-                inputMode="text"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck="false"
+                  inputMode="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck="false"
                   className="bg-transparent w-full text-base text-gray-800 focus:outline-none resize-none font-medium placeholder:text-gray-400"
                   rows="3"
                   value={prompt}
@@ -200,14 +202,11 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
               ))
             ) : (
               <p className="text-gray-400 text-sm">
-               
-               {loading && (
-                <div className="flex justify-center">
-                  <Loader2 size={18} className="animate-spin" />
-                </div>
-)}
-
-            
+                {loading && (
+                  <div className="flex justify-center">
+                    <Loader2 size={18} className="animate-spin" />
+                  </div>
+                )}
               </p>
             )}
           </div>

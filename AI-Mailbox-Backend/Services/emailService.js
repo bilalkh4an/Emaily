@@ -65,6 +65,7 @@ export async function fetchMailbox(userId) {
     // Step 1: Build threads from all fetched emails
 
     let threads = buildThreads(emails).map((thread) => {
+      
       return {
         ...thread,
         to: thread.to, // fallback if `to` is missing
@@ -282,6 +283,18 @@ function buildThreads(emails) {
     group.sort((a, b) => new Date(a.date) - new Date(b.date));
     const threadId = group[0].messageId;
 
+    // --- LOGIC TO FIND THE CORRECT "TO" ---
+  // We want the email address of the OTHER person, not our own.
+  // 1. Look for the first message in the Inbox (sent by them)
+  const inboxMsg = group.find(m => m.folder === "Inbox");
+  // 2. Look for the first message in Sent (sent to them)
+  const sentMsg = group.find(m => m.folder === "Sent");
+
+  // Logic: If there is an Inbox message, use its 'From' as the thread contact.
+  // If only Sent exists, use the 'To' of that Sent message.
+  const displayRecipient = inboxMsg ? inboxMsg.from : (sentMsg ? sentMsg.to : group[0].to);
+  // ---------------------------------------
+
     return {
       threadId,
       messages: group.map((email) => ({
@@ -295,11 +308,9 @@ function buildThreads(emails) {
         body: email.text,
         avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(email.from)}`,
         date: email.date,
-      })),
-      to: group[0].to,
-      bilal: group[0].inReplyTo,
+      })),     
       subject: group[0].subject,
-      sender: group[0].from.replace(/"/g, ""),
+      sender: displayRecipient.replace(/"/g, ""),
       time: new Date(group[group.length - 1].date).toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",

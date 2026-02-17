@@ -12,11 +12,13 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "compute-cosine-similarity": "^1.1.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "imapflow": "^1.2.8",
+    "jsonwebtoken": "^9.0.3",
     "mailparser": "^3.9.3",
     "mongodb": "^7.0.0",
     "mongoose": "^9.1.5",

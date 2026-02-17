@@ -8,10 +8,14 @@ const TopNav = ({
   Account,
   activeTab,
   setActiveTab,
-  isAccountDropdownOpen,
-  setIsAccountDropdownOpen,
   setIsLabOpen,
 }) => {
+
+  
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
+
+
+
   return (
     <header className="bg-gradient-to-b from-white to-gray-50/50 border-b border-gray-200 sticky top-0 z-40 backdrop-blur-sm bg-white/95">
       <style>{`
