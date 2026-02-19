@@ -16,8 +16,8 @@ export const startMailboxCron = () => {
 
     try {
       const userAccounts = await User.find();
-
       for (const userAccount of userAccounts) {
+        console.log(userAccount._id);
         await fetchMailbox(userAccount._id);
       }
     } catch (err) {

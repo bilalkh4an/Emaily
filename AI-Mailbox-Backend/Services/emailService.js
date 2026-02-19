@@ -6,11 +6,14 @@ import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 
 export async function fetchMailbox(userId) {
+
   const accounts = await EmailAccount.find({ userId });
   if (!accounts.length) throw new Error("Account not found");
+
   let emails = [];
 
   for (const account of accounts) {
+
     const client = new ImapFlow({
       host: account.imapHost,
       port: account.imapPort || 993,
@@ -18,7 +21,7 @@ export async function fetchMailbox(userId) {
       auth: { user: account.email, pass: account.password },
       logger: {
         debug: (msg) => {}, // ignore
-        info: () => {},     // ignore info messages
+        info: console.info, // ignore info messages
         warn: console.warn,
         error: console.error,
       },
@@ -26,12 +29,12 @@ export async function fetchMailbox(userId) {
 
     try {
       await client.connect();
-
       const inboxLock = await client.getMailboxLock("INBOX");
       const sentLock = await client.getMailboxLock("Sent");
       const folders = ["Inbox", "Sent"];
 
       try {
+        
         for (const foldervalue of folders) {
           const mailbox = await client.mailboxOpen(foldervalue);
 
@@ -95,8 +98,50 @@ export async function fetchMailbox(userId) {
       });
 
       // Step 2: Save each thread to DB
-      threads.forEach((thread) => {
-        saveFetchEmail(
+      for (const thread of threads) {
+        // 1. Gather IDs from the new batch to search the DB
+        const newBatchIds = thread.messages
+          .map((m) => m.messageId)
+          .filter(Boolean);
+        const newBatchParents = thread.messages
+          .map((m) => m.inReplyTo)
+          .filter(Boolean);
+
+        // 2. Find if this conversation already exists in your DB
+        const existingRecord = await EmailMemory.findOne({
+          userId: userId,
+          $or: [
+            { "messages.messageId": { $in: newBatchIds } },
+            { "messages.messageId": { $in: newBatchParents } },
+            { subject: thread.subject, sender: thread.sender }, // Fallback to subject
+          ],
+        });
+
+        let finalMessagesToSave = thread.messages;
+        let threadIdToUse = thread.threadId;
+
+        if (existingRecord) {
+          // Found an existing thread! Use its threadId to keep it grouped.
+          threadIdToUse = existingRecord.threadId;
+
+          // 3. MERGE: Add new messages to the existing 7 messages
+          const existingMessageIds = new Set(
+            existingRecord.messages.map((m) => m.messageId),
+          );
+
+          const trulyNewMessages = thread.messages.filter(
+            (m) => !existingMessageIds.has(m.messageId),
+          );
+
+          // History + New = No deleted messages
+          finalMessagesToSave = [
+            ...existingRecord.messages,
+            ...trulyNewMessages,
+          ];
+        }
+
+        // 4. Save using the original threadId if found
+        await saveFetchEmail(
           userId,
           thread.folder,
           account.email,
@@ -104,13 +149,14 @@ export async function fetchMailbox(userId) {
           thread.to,
           thread.subject,
           thread.time,
-          thread.messages.some((m) => m.unread), // unread flag
+          thread.messages.some((m) => m.unread),
           thread.avatar,
-          thread.messages,
-          thread.threadId,
+          finalMessagesToSave,
+          threadIdToUse,
           "user",
         );
-      });
+      }
+
     } catch (error) {
       console.error("IMAP Error:", error);
       throw error;
@@ -343,6 +389,8 @@ function buildThreads(emails) {
       threadId,
       messages: group.map((email) => ({
         messageId: email.messageId,
+        inReplyTo: email.inReplyTo, // <--- ADD THIS
+        references: email.references, // <--- ADD THIS
         sender: email.from.replace(/"/g, ""),
         folder: email.folder,
         time: new Date(email.date).toLocaleTimeString([], {
