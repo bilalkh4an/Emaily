@@ -50,6 +50,7 @@ const SearchMail = ({
               to: "",
               subject: "",
               body: "",
+              threadid: "",
               attachments: [],
             });
             setIsComposeOpen(true);

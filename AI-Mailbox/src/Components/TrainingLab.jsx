@@ -43,20 +43,17 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
 
   useEffect(() => {
     fetchEmailSent();
-    console.log("here = "+inboxdata)
-  }, []);
+  }, [selectedAccount]);
 
   const fetchEmailSent = async () => {
     const token = localStorage.getItem("token"); // 👈 Get token
     try {
-      const res = await fetch(
-        "http://localhost:3000/api/emails/conversation/bilal_khan",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`, // 👈 Pass token
-          },
+      console.log(selectedAccount);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/emails/conversation`, {
+        headers: {
+          Authorization: `Bearer ${token}`, // 👈 Pass token
         },
-      );
+      });
 
       if (!res.ok) {
         throw new Error("Failed to fetch emails");
@@ -64,16 +61,18 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
 
       const result = await res.json(); // 👈 important
 
-      const emailList = result.flatMap((item) =>
-        item.messages
-          .filter((msg) => msg.folder === "Sent")
-          .map((msg) => ({
-            subject: item.subject,
-            body: msg.body,
-          })),
-      );
+      const emailList = result
+        .filter((item) => item.account === selectedAccount)
+        .flatMap((item) =>
+          item.messages
+            .filter((msg) => msg.folder === "Sent")
+            .map((msg) => ({
+              subject: item.subject,
+              body: msg.body,
+            })),
+        );
 
-      setInboxdata(emailList)
+      setInboxdata(emailList);
     } catch (error) {
       console.error("Error fetching emails:", error);
     } finally {
@@ -109,19 +108,17 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
       setIsTraining(true);
       setTrainStatus("");
 
-      const response = await fetch(
-        "http://localhost:3000/api/setup-voice",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: selectedAccount, // identity-based training
-            initialEmails: currentSamples.map((s) => s.body),
-          }),
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/setup-voice`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-      );
+        body: JSON.stringify({
+          account: selectedAccount, // identity-based training
+          initialEmails: currentSamples.map((s) => s.body),
+        }),
+      });
 
       const data = await response.json();
 
@@ -324,10 +321,10 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
                         </button>
                       </div>
                       <h4 className="font-bold text-slate-900 mb-1 text-sm xl:text-base">
-                         Subject: {item.subject}
+                        Subject: {item.subject}
                       </h4>
                       <p className="text-[11px] xl:text-xs text-slate-400 leading-relaxed line-clamp-2 italic font-medium">
-                         {item.body}
+                        {item.body}
                       </p>
                     </div>
                   </div>

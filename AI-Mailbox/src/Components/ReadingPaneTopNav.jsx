@@ -135,7 +135,7 @@ const ReadinPaneTopNav = ({
               <div className="h-px bg-gray-100 my-1"></div>
              
               {folders.map((item) => (
-                <h1
+                <div
                   key={item}
                   className={` ${
                     item === openEmail.folder ? "hidden" : "block"
@@ -149,7 +149,7 @@ const ReadinPaneTopNav = ({
                 <AlertOctagon size={16} />
                 <span>Move To {item}</span>
               </button>
-                </h1>
+                </div>
               ))}
             </div>
           </>

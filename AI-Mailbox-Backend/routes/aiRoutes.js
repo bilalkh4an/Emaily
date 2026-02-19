@@ -7,7 +7,7 @@ import {
 
 const router = express.Router();
 
-router.post("/setup-voice", setupVoice);
-router.post("/draft", generateDraft);
+router.post("/setup-voice", protect, setupVoice);
+router.post("/draft", protect, generateDraft);
 
 export default router;

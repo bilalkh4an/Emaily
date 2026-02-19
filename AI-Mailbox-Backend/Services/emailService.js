@@ -18,29 +18,36 @@ export async function fetchMailbox(userId) {
 
   try {
     await client.connect();
-    const inboxLock = await client.getMailboxLock("INBOX");
-    const sentLock = await client.getMailboxLock("Sent");
 
-    let emails = [];
+    const inboxLock = await client.getMailboxLock("INBOX");
+    const sentLock = await client.getMailboxLock("Sent");    
     const folders = ["Inbox", "Sent"];
+    let emails = [];
 
     try {
       for (const foldervalue of folders) {
+
         const mailbox = await client.mailboxOpen(foldervalue);
 
-        // 2. SAFETY CHECK: If the folder has 0 messages, skip it
         if (mailbox.exists === 0) {
           console.log(`ℹ️ Folder "${foldervalue}" is empty. Skipping fetch.`);
           continue;
         }
 
-        for await (let message of client.fetch("1:*", {
-          source: true,
-          envelope: true,
-          uid: true,
-        })) {
-          const parsed = await simpleParser(message.source);
+        const lastUID = account.lastSyncedUIDs.get(foldervalue) || 0;
+        const highestUID = mailbox.uidNext;
+        const fetchRange = lastUID > 0 ? `${lastUID + 1}:${highestUID}` : "1:*";
+        let maxUID = lastUID;
 
+        for await (let message of client.fetch(
+          { uid: fetchRange },
+          {
+            source: true,
+            envelope: true,
+            uid: true,
+          },
+        )) {
+          const parsed = await simpleParser(message.source);
           emails.push({
             uid: message.uid,
             messageId: parsed.messageId,
@@ -53,6 +60,13 @@ export async function fetchMailbox(userId) {
             text: parsed.text,
             folder: foldervalue, // keep folder per email
           });
+
+          if (message.uid > maxUID) maxUID = message.uid;
+        }
+
+        if (maxUID > lastUID) {
+          account.lastSyncedUIDs.set(foldervalue, maxUID);
+          await account.save();
         }
       }
     } finally {
@@ -65,7 +79,6 @@ export async function fetchMailbox(userId) {
     // Step 1: Build threads from all fetched emails
 
     let threads = buildThreads(emails).map((thread) => {
-      
       return {
         ...thread,
         to: thread.to, // fallback if `to` is missing
@@ -105,28 +118,31 @@ export async function fetchSentEmails(userId) {
   return account;
 }
 
-// Get Email Addresses list
 export async function EmailAccounts(userId) {
-  const account = await EmailAccount.find({ userId });
-  if (!account) throw new Error("Account not found");
-  return account;
+  const accounts = await EmailAccount.find({ userId }).populate("userId"); // automatically fetch user data
+  return accounts;
 }
 
-export async function sentEmail(to, subject, body, userId, inReplyToId) {
+export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
+  const accountDetails = await EmailAccount.findOne({
+    userId,
+    email: from,
+  }).populate("userId");
+
   const transporter = nodemailer.createTransport({
-    host: "mail.emaily.uk",
+    host: accountDetails.imapHost,
     port: 465,
     secure: true,
     auth: {
-      user: "info@emaily.uk",
-      pass: "Pakistan123!@#",
+      user: accountDetails.email,
+      pass: accountDetails.password,
     },
   });
 
   console.log(inReplyToId);
 
   const mailOptions = {
-    from: "info@emaily.uk",
+    from: from,
     to,
     subject,
     text: body,
@@ -158,12 +174,12 @@ export async function sentEmail(to, subject, body, userId, inReplyToId) {
 
     // 3️⃣ Connect to IMAP and append to Sent
     const client = new ImapFlow({
-      host: "mail.emaily.uk",
+      host: accountDetails.imapHost,
       port: 993,
       secure: true,
       auth: {
-        user: "info@emaily.uk",
-        pass: "Pakistan123!@#",
+        user: accountDetails.email,
+        pass: accountDetails.password,
       },
       logger: false,
     });
@@ -179,6 +195,23 @@ export async function sentEmail(to, subject, body, userId, inReplyToId) {
     console.error("Send email error:", error);
     throw error;
   }
+}
+
+export async function createImapAccount(
+  userId,
+  email,
+  imapHost,
+  imapPort,
+  password,
+) {
+  const account = await EmailAccount.findOneAndUpdate(
+    { email }, // Find by email
+    { userId, email, imapHost, imapPort, password }, // Update these fields
+    { upsert: true, new: true }, // Create if doesn't exist
+  );
+
+  if (!account) throw new Error("Account not found");
+  return account;
 }
 
 async function saveFetchEmail(
@@ -284,16 +317,20 @@ function buildThreads(emails) {
     const threadId = group[0].messageId;
 
     // --- LOGIC TO FIND THE CORRECT "TO" ---
-  // We want the email address of the OTHER person, not our own.
-  // 1. Look for the first message in the Inbox (sent by them)
-  const inboxMsg = group.find(m => m.folder === "Inbox");
-  // 2. Look for the first message in Sent (sent to them)
-  const sentMsg = group.find(m => m.folder === "Sent");
+    // We want the email address of the OTHER person, not our own.
+    // 1. Look for the first message in the Inbox (sent by them)
+    const inboxMsg = group.find((m) => m.folder === "Inbox");
+    // 2. Look for the first message in Sent (sent to them)
+    const sentMsg = group.find((m) => m.folder === "Sent");
 
-  // Logic: If there is an Inbox message, use its 'From' as the thread contact.
-  // If only Sent exists, use the 'To' of that Sent message.
-  const displayRecipient = inboxMsg ? inboxMsg.from : (sentMsg ? sentMsg.to : group[0].to);
-  // ---------------------------------------
+    // Logic: If there is an Inbox message, use its 'From' as the thread contact.
+    // If only Sent exists, use the 'To' of that Sent message.
+    const displayRecipient = inboxMsg
+      ? inboxMsg.from
+      : sentMsg
+        ? sentMsg.to
+        : group[0].to;
+    // ---------------------------------------
 
     return {
       threadId,
@@ -308,7 +345,7 @@ function buildThreads(emails) {
         body: email.text,
         avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(email.from)}`,
         date: email.date,
-      })),     
+      })),
       subject: group[0].subject,
       sender: displayRecipient.replace(/"/g, ""),
       time: new Date(group[group.length - 1].date).toLocaleTimeString([], {

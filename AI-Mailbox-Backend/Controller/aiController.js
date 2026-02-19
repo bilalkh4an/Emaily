@@ -4,7 +4,8 @@ import { EmailMemory } from "../models/EmailMemory.js";
 
 export const setupVoice = async (req, res) => {
   try {
-    const { userId, initialEmails } = req.body;
+    const userId = req.user.id; // comes from protect middleware
+    const { account, initialEmails } = req.body;
     if (!initialEmails || initialEmails.length < 5) {
       return res.status(400).json({
         error: "Please provide at least 5 emails for accurate analysis.",
@@ -12,14 +13,14 @@ export const setupVoice = async (req, res) => {
     }
     const analyzedDNA = await VoiceTraining(initialEmails);
 
-    // 2. Save to DB using the Model
     const savedRecord = await VoiceDNA.findOneAndUpdate(
-      { userId },
-      { voiceDNA: analyzedDNA },
-      { upsert: true, new: true },
+      { userId, account },
+      { $set: { userId, account, voiceDNA: analyzedDNA } },
+      { upsert: true, new: true, runValidators: true },
     );
+
     console.log(`✅ Voice DNA saved for ${userId}`);
-    res.json({ success: true, voiceDNA: savedRecord.voiceDNA });
+    res.json({ success: true, voiceDNA: savedRecord });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -27,7 +28,9 @@ export const setupVoice = async (req, res) => {
 
 export const generateDraft = async (req, res) => {
   try {
-    const { userId, threadId, prompt, sessionHistory = [] } = req.body;
+    const userId = req.user.id; // comes from protect middleware
+    const { account, threadId, prompt, sessionHistory = [] } = req.body;
+    console.log("Account = "+account);
 
     // 1. Set SSE Headers immediately
     res.setHeader("Content-Type", "text/event-stream");
@@ -55,7 +58,7 @@ export const generateDraft = async (req, res) => {
       communication_style: ["instructive", "collaborative", "objective"],
     };
 
-    const userRecord = await VoiceDNA.findOne({ userId });
+    const userRecord = await VoiceDNA.findOne({ userId, account });
     const activeDNA = userRecord ? userRecord.voiceDNA : defaultDNA;
 
     // 2. Fetch Thread History from DB (Previous emails)
@@ -63,7 +66,6 @@ export const generateDraft = async (req, res) => {
 
     // 3. Combine DB History + Current Session Instructions
     const formattedHistory = [
-
       // --- Part A: Emails from Database ---
       ...(dbHistory?.messages || []).map((msg) => {
         const senderLabel = msg.folder === "Sent" ? "Me" : "Client";
@@ -75,7 +77,6 @@ export const generateDraft = async (req, res) => {
         const roleLabel = msg.role === "user" ? "User Instruction" : "AI Draft";
         return `${roleLabel}: ${msg.content}`;
       }),
-
     ].join("\n");
 
     // 2. Call generateAIPrompt
@@ -90,7 +91,7 @@ export const generateDraft = async (req, res) => {
       },
     );
 
-    res.end(); 
+    res.end();
   } catch (error) {
     console.error("Drafting Error:", error);
     // If headers haven't been sent, we can send a 500. Otherwise, we just end.

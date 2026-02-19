@@ -15,6 +15,7 @@ const ReadingPane = ({
       to: type === "reply" ? email.sender : "",
       subject: `${prefix}${email.subject}`,
       body: `\n\n--- Original Message ---\nFrom: ${email.sender}\n\n${email.messages[0].body}`,
+      threadid: email.threadid,
       attachments: [],
     });
     setIsComposeOpen(true);
@@ -46,7 +47,7 @@ const ReadingPane = ({
             {/* THREAD CONVERSATION START */}
             <div className="space-y-6 mb-8">
               {openEmail.messages.map((msg, index) => (
-                <div key={msg.id} className="relative">
+                <div key={msg._id || `msg-${index}`} className="relative">
                   {/* Message Card */}
                   <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all">
                     {/* Message Header */}

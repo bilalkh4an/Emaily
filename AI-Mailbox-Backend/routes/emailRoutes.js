@@ -5,13 +5,15 @@ import {
   getMailBox,
   getConversation,
   sendEmailHandler,
+  addImapAccount,
 } from "../Controller/emailController.js";
 
 const router = express.Router();
 
-router.get("/emailaccounts/:userId", getEmailAccounts);
-router.get("/emails/fetch/:userId", getMailBox);
-router.get("/emails/conversation/:userId", protect, getConversation);
-router.post("/sentemail", sendEmailHandler);
+router.get("/emailaccounts", protect, getEmailAccounts);
+router.get("/emails/fetch/", protect, getMailBox);
+router.get("/emails/conversation/", protect, getConversation);
+router.post("/create/imapaccount", protect, addImapAccount);
+router.post("/sentemail", protect, sendEmailHandler);
 
 export default router;

@@ -79,15 +79,19 @@ const Compose = ({
   if (!isComposeOpen) return null;
   const handlesend = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/sentEmail", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/sentEmail`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
         body: JSON.stringify({
-          userId: "bilal_khan", // Using passed prop or default
+          from: composeData.from,
           to: composeData.to,
           subject: composeData.subject,
           body: editor.getText(),
-          inReplyToId: openEmail?.threadid || "",
+          //inReplyToId: openEmail?.threadid || "",
+          inReplyToId: composeData.threadid,
         }),
       });
 

@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import Dropdown from "./Dropdown";
 import { X, Sparkles, Wand2, Loader2 } from "lucide-react";
 
-const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
+const AIReplyModal = ({ isOpen, onClose, onInsert, userId, openEmail,composeData }) => {
   const [prompt, setPrompt] = useState(
     "Mention we can meet Thursday and ask for the updated contract.",
   );
+
+ 
 
   const options1 = ["Default Tone", "Formal", "Casual", "Friendly"];
   const options2 = ["Short", "Medium", "Long"];
@@ -27,17 +29,18 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
       const currentMessage = { role: "user", content: prompt };
       const updatedHistory = [...sessionHistory, currentMessage];
       setDrafts([]); // Clear previous drafts if you want to see it live
-      console.log(userId);
-      console.log(threadId);
+      console.log("THread ID in AI assist Model " + composeData.threadid);
+      console.log("Sending From " + composeData.from);
 
-      const response = await fetch("http://localhost:3000/api/draft", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/draft`, { 
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: "bilal_khan", // Using passed prop or default
-          threadId:
-            threadId ||
-            "<CAD41KV0Hi1umjSe9hUrr2seGJeq400x2iuHXV_btLXtDBL40Pg@mail.gmail.com>",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ 
+          account: composeData.from,         
+          threadId: composeData.threadid,  //change this as this will have the id of open thread which dont close
           prompt: prompt,
           sessionHistory: updatedHistory, // Sending the full session context
           tone,
@@ -201,13 +204,13 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, threadId }) => {
                 <DraftCard key={i} title={`Draft ${i + 1}`} content={draft} />
               ))
             ) : (
-              <p className="text-gray-400 text-sm">
+              <div className="text-gray-400 text-sm">
                 {loading && (
                   <div className="flex justify-center">
                     <Loader2 size={18} className="animate-spin" />
                   </div>
                 )}
-              </p>
+              </div>
             )}
           </div>
         </div>

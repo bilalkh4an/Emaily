@@ -65,12 +65,14 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const handleImapAdd = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3000/api/settings/add-imap",
+      `${import.meta.env.VITE_API_URL}/api/create/imapaccount`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
           body: JSON.stringify({
-            userId: "bilal_khan", // Using passed prop or default
             email: emailaddress,
             imapHost: imapHost,
             imapPort: imapPort,

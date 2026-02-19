@@ -6,7 +6,6 @@ import authRoutes from "./routes/authRoutes.js";
 import cors from "cors";
 import "dotenv/config";
 
-
 const app = express();
 
 app.use(express.json());
@@ -16,14 +15,12 @@ app.use("/api", emailRoutes);
 app.use("/api", aiRoutes);
 app.use("/api", authRoutes);
 
+//Allow only your frontend domain & uncomment this on backend server
 
-
-
-// Allow only your frontend domain
-// app.use(cors({
-//   origin: 'http://https://emaily.uk/', // or '*' to allow all
-//   methods: ['GET','POST','PUT','DELETE'],
-//   credentials: true // if you need cookies/auth
-// }));
+//  app.use(cors({
+//    origin: '*', // or '*' to allow all
+//    methods: ['GET','POST','PUT','DELETE'],
+//    credentials: true // if you need cookies/auth
+//   }));
 
 export default app;

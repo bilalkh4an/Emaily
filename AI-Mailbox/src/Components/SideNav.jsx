@@ -71,6 +71,7 @@ const SideNav = ({
               to: "",
               subject: "",
               body: "",
+              threadid: "",
               attachments: [],
             });
             setIsComposeOpen(true);

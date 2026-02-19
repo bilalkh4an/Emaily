@@ -31,6 +31,7 @@ function App() {
     if (isAuthenticated) {
       fetchEmails();
       fetchEmailAccounts();
+      fetchMailbox();
     }
   }, [isAuthenticated]);
 
@@ -40,11 +41,35 @@ function App() {
     setIsAuthenticated(false);
   };
 
+  const fetchMailbox = async () => {
+    const token = localStorage.getItem("token"); // 👈 Get token
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/emails/fetch`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // 👈 Pass token
+          },
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch emails");
+      }
+
+      const result = await res.json(); // 👈 important
+
+    } catch (error) {
+      console.error("Error fetching emails:", error);
+    } finally {
+    }
+  };
+
   const fetchEmails = async () => {
     const token = localStorage.getItem("token"); // 👈 Get token
     try {
       const res = await fetch(
-        "http://localhost:3000/api/emails/conversation/bilal_khan",
+        `${import.meta.env.VITE_API_URL}/api/emails/conversation`,
         {
           headers: {
             Authorization: `Bearer ${token}`, // 👈 Pass token
@@ -81,8 +106,13 @@ function App() {
   const fetchEmailAccounts = async () => {
     try {
       const res = await fetch(
-        "http://localhost:3000/api/emailaccounts/bilal_khan",
-      );
+        `${import.meta.env.VITE_API_URL}/api/emailaccounts`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
 
       if (!res.ok) {
         throw new Error("Failed to fetch emails");
@@ -122,11 +152,12 @@ function App() {
     to: "",
     subject: "",
     body: "",
+    threadid: "",
     attachments: [],
   });
 
   const [searchQuery, setSearchQuery] = useState("");
-  const openEmail = allEmails.find((e) => e.id === selectedEmail);
+  const openEmail = allEmails.find((e) => e.id === selectedEmail);  
 
   const filteredEmails = allEmails.filter((email) => {
     const matchesFolder = email.messages?.some(
@@ -268,6 +299,8 @@ function App() {
       </div>
 
       <AIReplyModal
+        openEmail={openEmail}
+        composeData={composeData}
         isOpen={isAIReplyOpen}
         onClose={() => setIsAIReplyOpen(false)}
         onInsert={(text) => {
