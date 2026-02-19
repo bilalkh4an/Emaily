@@ -97,6 +97,7 @@ const Compose = ({
 
       if (!response.ok) throw new Error("Stream failed");
       if (response.ok) {
+        setIsComposeOpen(false);
         alert("Message Sent Successfully");
       }
     } catch (error) {

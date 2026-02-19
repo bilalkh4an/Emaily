@@ -139,7 +139,7 @@ function App() {
     "Trash",
   ]);
 
-  const [activeFolder, setActiveFolder] = useState("Inbox");
+  const [activeFolder, setActiveFolder] = useState("Inbox"); 
   const [activeTab, setActiveTab] = useState("All Mail");
   const [isAIReplyOpen, setIsAIReplyOpen] = useState(false);
 

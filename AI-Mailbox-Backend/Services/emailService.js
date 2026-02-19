@@ -5,164 +5,191 @@ import nodemailer from "nodemailer";
 import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 
-export async function fetchMailbox(userId) {
+// export async function fetchMailbox(userId) {
+//   const accounts = await EmailAccount.find({ userId });
+//   if (!accounts.length) throw new Error("Account not found");
+  
 
+//   for (const account of accounts) {
+//     const client = new ImapFlow({
+//       host: account.imapHost,
+//       port: account.imapPort || 993,
+//       secure: true,
+//       auth: { user: account.email, pass: account.password },
+//       logger: {
+//         debug: (msg) => {}, // ignore
+//         info: console.info, // ignore info messages
+//         warn: console.warn,
+//         error: console.error,
+//       },
+//     });
+//     let emails = [];
+
+//     try {
+//       await client.connect();
+
+//       const inboxLock = await client.getMailboxLock("INBOX");
+//       const sentLock = await client.getMailboxLock("Sent");
+//       const folders = ["Inbox", "Sent"];
+
+//       try {
+//         for (const foldervalue of folders) {
+//           const mailbox = await client.mailboxOpen(foldervalue);
+
+//           if (mailbox.exists === 0) {
+//             console.log(`ℹ️ Folder "${foldervalue}" is empty. Skipping fetch.`);
+//             continue;
+//           }
+
+//           const lastUID = account.lastSyncedUIDs.get(foldervalue) || 0;
+//           const highestUID = mailbox.uidNext;
+//           const fetchRange =
+//             lastUID > 0 ? `${lastUID + 1}:${highestUID}` : "1:*";
+//           let maxUID = lastUID;
+
+//           for await (let message of client.fetch(
+//             { uid: fetchRange },
+//             {
+//               source: true,
+//               envelope: true,
+//               uid: true,
+//             },
+//           )) {
+//             const parsed = await simpleParser(message.source);
+//             emails.push({
+//               uid: message.uid,
+//               messageId: parsed.messageId,
+//               inReplyTo: parsed.inReplyTo,
+//               references: parsed.references,
+//               subject: parsed.subject,
+//               from: parsed.from?.text,
+//               to: parsed.to?.text,
+//               date: parsed.date,
+//               text: parsed.text,
+//               folder: foldervalue, // keep folder per email
+//             });
+
+//             if (message.uid > maxUID) maxUID = message.uid;
+//           }
+
+//           if (maxUID > lastUID) {
+//             account.lastSyncedUIDs.set(foldervalue, maxUID);
+//             await account.save();
+//           }
+//         }
+//       } finally {
+//         inboxLock.release();
+//         sentLock.release();
+//       }
+
+//       await client.logout();
+
+//       // Step 1: Build threads from all fetched emails
+
+//       let threads = buildThreads(emails).map((thread) => {
+//         return {
+//           ...thread,
+//           to: thread.to, // fallback if `to` is missing
+//           folder: "Inbox", // first message folder
+//           avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(thread.sender)}`, // avatar
+//         };
+//       });
+
+//       // Step 2: Save each thread to DB
+//       for (const thread of threads) {
+//         // 1. Gather IDs from the new batch to search the DB
+//         const newBatchIds = thread.messages
+//           .map((m) => m.messageId)
+//           .filter(Boolean);
+//         const newBatchParents = thread.messages
+//           .map((m) => m.inReplyTo)
+//           .filter(Boolean);
+
+//         // 2. Find if this conversation already exists in your DB
+//         const existingRecord = await EmailMemory.findOne({
+//           userId: userId,
+//           $or: [
+//             { "messages.messageId": { $in: newBatchIds } },
+//             { "messages.messageId": { $in: newBatchParents } },
+//             { subject: thread.subject, sender: thread.sender }, // Fallback to subject
+//           ],
+//         });
+
+//         let finalMessagesToSave = thread.messages;
+//         let threadIdToUse = thread.threadId;
+
+//         if (existingRecord) {
+//           // Found an existing thread! Use its threadId to keep it grouped.
+//           threadIdToUse = existingRecord.threadId;
+
+//           // 3. MERGE: Add new messages to the existing 7 messages
+//           const existingMessageIds = new Set(
+//             existingRecord.messages.map((m) => m.messageId),
+//           );
+
+//           const trulyNewMessages = thread.messages.filter(
+//             (m) => !existingMessageIds.has(m.messageId),
+//           );
+
+//           // History + New = No deleted messages
+//           finalMessagesToSave = [
+//             ...existingRecord.messages,
+//             ...trulyNewMessages,
+//           ];
+//         }
+
+//         console.log("Account",account.email);
+
+//         // 4. Save using the original threadId if found
+//         await saveFetchEmail(
+//           userId,
+//           thread.folder,
+//           account.email,
+//           thread.sender,
+//           thread.to,
+//           thread.subject,
+//           thread.time,
+//           thread.messages.some((m) => m.unread),
+//           thread.avatar,
+//           finalMessagesToSave,
+//           threadIdToUse,
+//           "user",
+//         );
+//         console.log("Added",account.email);
+//       }
+//     } catch (error) {
+//       console.error("IMAP Error:", error);
+//       throw error;
+//     }
+//   }
+//   return "Sync Finished"; // return to caller
+// }
+
+
+export async function fetchMailbox(userId) {
   const accounts = await EmailAccount.find({ userId });
   if (!accounts.length) throw new Error("Account not found");
 
-  let emails = [];
-
   for (const account of accounts) {
-
-    const client = new ImapFlow({
-      host: account.imapHost,
-      port: account.imapPort || 993,
-      secure: true,
-      auth: { user: account.email, pass: account.password },
-      logger: {
-        debug: (msg) => {}, // ignore
-        info: console.info, // ignore info messages
-        warn: console.warn,
-        error: console.error,
-      },
-    });
-
     try {
-      await client.connect();
-      const inboxLock = await client.getMailboxLock("INBOX");
-      const sentLock = await client.getMailboxLock("Sent");
-      const folders = ["Inbox", "Sent"];
+      // Step 1: Fetch raw emails for THIS account only
+      const emails = await fetchRawEmails(account);
+      if (emails.length === 0) continue;
 
-      try {
-        
-        for (const foldervalue of folders) {
-          const mailbox = await client.mailboxOpen(foldervalue);
+      // Step 2: Group them into local threads
+      const threads = groupEmailsIntoThreads(emails);
 
-          if (mailbox.exists === 0) {
-            console.log(`ℹ️ Folder "${foldervalue}" is empty. Skipping fetch.`);
-            continue;
-          }
-
-          const lastUID = account.lastSyncedUIDs.get(foldervalue) || 0;
-          const highestUID = mailbox.uidNext;
-          const fetchRange =
-            lastUID > 0 ? `${lastUID + 1}:${highestUID}` : "1:*";
-          let maxUID = lastUID;
-
-          for await (let message of client.fetch(
-            { uid: fetchRange },
-            {
-              source: true,
-              envelope: true,
-              uid: true,
-            },
-          )) {
-            const parsed = await simpleParser(message.source);
-            emails.push({
-              uid: message.uid,
-              messageId: parsed.messageId,
-              inReplyTo: parsed.inReplyTo,
-              references: parsed.references,
-              subject: parsed.subject,
-              from: parsed.from?.text,
-              to: parsed.to?.text,
-              date: parsed.date,
-              text: parsed.text,
-              folder: foldervalue, // keep folder per email
-            });
-
-            if (message.uid > maxUID) maxUID = message.uid;
-          }
-
-          if (maxUID > lastUID) {
-            account.lastSyncedUIDs.set(foldervalue, maxUID);
-            await account.save();
-          }
-        }
-      } finally {
-        inboxLock.release();
-        sentLock.release();
-      }
-
-      await client.logout();
-
-      // Step 1: Build threads from all fetched emails
-
-      let threads = buildThreads(emails).map((thread) => {
-        return {
-          ...thread,
-          to: thread.to, // fallback if `to` is missing
-          folder: "Inbox", // first message folder
-          avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(thread.sender)}`, // avatar
-        };
-      });
-
-      // Step 2: Save each thread to DB
+      // Step 3: Link with Database and Save
       for (const thread of threads) {
-        // 1. Gather IDs from the new batch to search the DB
-        const newBatchIds = thread.messages
-          .map((m) => m.messageId)
-          .filter(Boolean);
-        const newBatchParents = thread.messages
-          .map((m) => m.inReplyTo)
-          .filter(Boolean);
-
-        // 2. Find if this conversation already exists in your DB
-        const existingRecord = await EmailMemory.findOne({
-          userId: userId,
-          $or: [
-            { "messages.messageId": { $in: newBatchIds } },
-            { "messages.messageId": { $in: newBatchParents } },
-            { subject: thread.subject, sender: thread.sender }, // Fallback to subject
-          ],
-        });
-
-        let finalMessagesToSave = thread.messages;
-        let threadIdToUse = thread.threadId;
-
-        if (existingRecord) {
-          // Found an existing thread! Use its threadId to keep it grouped.
-          threadIdToUse = existingRecord.threadId;
-
-          // 3. MERGE: Add new messages to the existing 7 messages
-          const existingMessageIds = new Set(
-            existingRecord.messages.map((m) => m.messageId),
-          );
-
-          const trulyNewMessages = thread.messages.filter(
-            (m) => !existingMessageIds.has(m.messageId),
-          );
-
-          // History + New = No deleted messages
-          finalMessagesToSave = [
-            ...existingRecord.messages,
-            ...trulyNewMessages,
-          ];
-        }
-
-        // 4. Save using the original threadId if found
-        await saveFetchEmail(
-          userId,
-          thread.folder,
-          account.email,
-          thread.sender,
-          thread.to,
-          thread.subject,
-          thread.time,
-          thread.messages.some((m) => m.unread),
-          thread.avatar,
-          finalMessagesToSave,
-          threadIdToUse,
-          "user",
-        );
+        await linkAndSaveThread(userId, account.email, thread);
       }
-
+      
+      console.log(`✅ Sync complete for: ${account.email}`);
     } catch (error) {
-      console.error("IMAP Error:", error);
-      throw error;
+      console.error(`❌ IMAP Error for ${account.email}:`, error);
     }
   }
-  return emails; // return to caller
+  return "Sync Finished";
 }
 
 export async function fetchSentEmails(userId) {
@@ -413,4 +440,105 @@ function buildThreads(emails) {
 
   // Sort threads by last message time descending
   return threads.sort((a, b) => new Date(b.time) - new Date(a.time));
+}
+
+
+async function fetchRawEmails(account) {
+  const client = new ImapFlow({
+    host: account.imapHost,
+    port: account.imapPort || 993,
+    secure: true,
+    auth: { user: account.email, pass: account.password },
+    logger: false 
+  });
+
+  const emails = [];
+  await client.connect();
+
+  try {
+    const folders = ["Inbox", "Sent"];
+    for (const folder of folders) {
+      const mailbox = await client.mailboxOpen(folder=="Inbox" ? "INBOX":folder);
+      if (mailbox.exists === 0) continue;
+
+      const lastUID = account.lastSyncedUIDs.get(folder) || 0;
+      const fetchRange = lastUID > 0 ? `${lastUID + 1}:*` : "1:*";
+      let maxUID = lastUID;
+
+      for await (let message of client.fetch({ uid: fetchRange }, { source: true, uid: true })) {
+        const parsed = await simpleParser(message.source);
+        emails.push({
+          uid: message.uid,
+          messageId: parsed.messageId,
+          inReplyTo: parsed.inReplyTo,
+          references: parsed.references,
+          subject: parsed.subject,
+          from: parsed.from?.text,
+          to: parsed.to?.text,
+          date: parsed.date,
+          text: parsed.text,
+          folder: folder,
+        });
+        if (message.uid > maxUID) maxUID = message.uid;
+      }
+
+      if (maxUID > lastUID) {
+        account.lastSyncedUIDs.set(folder, maxUID);
+        await account.save();
+      }
+    }
+  } finally {
+    await client.logout();
+  }
+  return emails;
+}
+
+function groupEmailsIntoThreads(emails) {
+  return buildThreads(emails).map((thread) => ({
+    ...thread,
+    folder: "Inbox",
+    avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(thread.sender)}`,
+  }));
+}
+
+async function linkAndSaveThread(userId, accountEmail, thread) {
+  const newBatchIds = thread.messages.map(m => m.messageId).filter(Boolean);
+  const newBatchParents = thread.messages.map(m => m.inReplyTo).filter(Boolean);
+
+  // Check if thread exists in DB
+  const existingRecord = await EmailMemory.findOne({
+    userId,
+    $or: [
+      { "messages.messageId": { $in: newBatchIds } },
+      { "messages.messageId": { $in: newBatchParents } },
+      { subject: thread.subject, sender: thread.sender },
+    ],
+  });
+
+  let finalMessages = thread.messages;
+  let threadIdToUse = thread.threadId;
+
+  if (existingRecord) {
+    threadIdToUse = existingRecord.threadId;
+    const existingIds = new Set(existingRecord.messages.map(m => m.messageId));
+    const trulyNew = thread.messages.filter(m => !existingIds.has(m.messageId));
+    
+    // Merge history with new emails
+    finalMessages = [...existingRecord.messages, ...trulyNew];
+  }
+
+  await saveFetchEmail(
+    userId,
+    thread.folder,
+    accountEmail,
+    thread.sender,
+    thread.to,
+    thread.subject,
+    thread.time,
+    thread.messages.some(m => m.unread),
+    thread.avatar,
+    finalMessages,
+    threadIdToUse,
+    "user"
+  );
 }

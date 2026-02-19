@@ -67,7 +67,7 @@ const ReadingPane = ({
                           </span>
                         </div>
                         <p className="text-xs text-gray-600">
-                          to {openEmail.recipient || 'me'}
+                          To: {openEmail.sender}
                         </p>
                       </div>
                     </div>
