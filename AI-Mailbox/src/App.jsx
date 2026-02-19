@@ -31,7 +31,7 @@ function App() {
     if (isAuthenticated) {
       fetchEmails();
       fetchEmailAccounts();
-      fetchMailbox();
+      //fetchMailbox();
     }
   }, [isAuthenticated]);
 

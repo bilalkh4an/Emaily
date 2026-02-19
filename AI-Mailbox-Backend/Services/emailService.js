@@ -6,110 +6,117 @@ import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 
 export async function fetchMailbox(userId) {
-  const account = await EmailAccount.findOne({ userId });
-  if (!account) throw new Error("Account not found");
+  const accounts = await EmailAccount.find({ userId });
+  if (!accounts.length) throw new Error("Account not found");
+  let emails = [];
 
-  const client = new ImapFlow({
-    host: account.imapHost,
-    port: account.imapPort || 993,
-    secure: true,
-    auth: { user: account.email, pass: account.password },
-  });
-
-  try {
-    await client.connect();
-
-    const inboxLock = await client.getMailboxLock("INBOX");
-    const sentLock = await client.getMailboxLock("Sent");    
-    const folders = ["Inbox", "Sent"];
-    let emails = [];
+  for (const account of accounts) {
+    const client = new ImapFlow({
+      host: account.imapHost,
+      port: account.imapPort || 993,
+      secure: true,
+      auth: { user: account.email, pass: account.password },
+      logger: {
+        debug: (msg) => {}, // ignore
+        info: () => {},     // ignore info messages
+        warn: console.warn,
+        error: console.error,
+      },
+    });
 
     try {
-      for (const foldervalue of folders) {
+      await client.connect();
 
-        const mailbox = await client.mailboxOpen(foldervalue);
+      const inboxLock = await client.getMailboxLock("INBOX");
+      const sentLock = await client.getMailboxLock("Sent");
+      const folders = ["Inbox", "Sent"];
 
-        if (mailbox.exists === 0) {
-          console.log(`ℹ️ Folder "${foldervalue}" is empty. Skipping fetch.`);
-          continue;
+      try {
+        for (const foldervalue of folders) {
+          const mailbox = await client.mailboxOpen(foldervalue);
+
+          if (mailbox.exists === 0) {
+            console.log(`ℹ️ Folder "${foldervalue}" is empty. Skipping fetch.`);
+            continue;
+          }
+
+          const lastUID = account.lastSyncedUIDs.get(foldervalue) || 0;
+          const highestUID = mailbox.uidNext;
+          const fetchRange =
+            lastUID > 0 ? `${lastUID + 1}:${highestUID}` : "1:*";
+          let maxUID = lastUID;
+
+          for await (let message of client.fetch(
+            { uid: fetchRange },
+            {
+              source: true,
+              envelope: true,
+              uid: true,
+            },
+          )) {
+            const parsed = await simpleParser(message.source);
+            emails.push({
+              uid: message.uid,
+              messageId: parsed.messageId,
+              inReplyTo: parsed.inReplyTo,
+              references: parsed.references,
+              subject: parsed.subject,
+              from: parsed.from?.text,
+              to: parsed.to?.text,
+              date: parsed.date,
+              text: parsed.text,
+              folder: foldervalue, // keep folder per email
+            });
+
+            if (message.uid > maxUID) maxUID = message.uid;
+          }
+
+          if (maxUID > lastUID) {
+            account.lastSyncedUIDs.set(foldervalue, maxUID);
+            await account.save();
+          }
         }
-
-        const lastUID = account.lastSyncedUIDs.get(foldervalue) || 0;
-        const highestUID = mailbox.uidNext;
-        const fetchRange = lastUID > 0 ? `${lastUID + 1}:${highestUID}` : "1:*";
-        let maxUID = lastUID;
-
-        for await (let message of client.fetch(
-          { uid: fetchRange },
-          {
-            source: true,
-            envelope: true,
-            uid: true,
-          },
-        )) {
-          const parsed = await simpleParser(message.source);
-          emails.push({
-            uid: message.uid,
-            messageId: parsed.messageId,
-            inReplyTo: parsed.inReplyTo,
-            references: parsed.references,
-            subject: parsed.subject,
-            from: parsed.from?.text,
-            to: parsed.to?.text,
-            date: parsed.date,
-            text: parsed.text,
-            folder: foldervalue, // keep folder per email
-          });
-
-          if (message.uid > maxUID) maxUID = message.uid;
-        }
-
-        if (maxUID > lastUID) {
-          account.lastSyncedUIDs.set(foldervalue, maxUID);
-          await account.save();
-        }
+      } finally {
+        inboxLock.release();
+        sentLock.release();
       }
-    } finally {
-      inboxLock.release();
-      sentLock.release();
+
+      await client.logout();
+
+      // Step 1: Build threads from all fetched emails
+
+      let threads = buildThreads(emails).map((thread) => {
+        return {
+          ...thread,
+          to: thread.to, // fallback if `to` is missing
+          folder: "Inbox", // first message folder
+          avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(thread.sender)}`, // avatar
+        };
+      });
+
+      // Step 2: Save each thread to DB
+      threads.forEach((thread) => {
+        saveFetchEmail(
+          userId,
+          thread.folder,
+          account.email,
+          thread.sender,
+          thread.to,
+          thread.subject,
+          thread.time,
+          thread.messages.some((m) => m.unread), // unread flag
+          thread.avatar,
+          thread.messages,
+          thread.threadId,
+          "user",
+        );
+      });
+    } catch (error) {
+      console.error("IMAP Error:", error);
+      throw error;
     }
-
-    await client.logout();
-
-    // Step 1: Build threads from all fetched emails
-
-    let threads = buildThreads(emails).map((thread) => {
-      return {
-        ...thread,
-        to: thread.to, // fallback if `to` is missing
-        folder: "Inbox", // first message folder
-        avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(thread.sender)}`, // avatar
-      };
-    });
-
-    // Step 2: Save each thread to DB
-    threads.forEach((thread) => {
-      saveFetchEmail(
-        userId,
-        thread.folder,
-        account.email,
-        thread.sender,
-        thread.to,
-        thread.subject,
-        thread.time,
-        thread.messages.some((m) => m.unread), // unread flag
-        thread.avatar,
-        thread.messages,
-        thread.threadId,
-        "user",
-      );
-    });
-
-    return emails; // return to caller
-  } catch (error) {
-    console.error("IMAP Error:", error);
-    throw error;
   }
+  return emails; // return to caller
 }
 
 export async function fetchSentEmails(userId) {

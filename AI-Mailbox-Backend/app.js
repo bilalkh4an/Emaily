@@ -2,6 +2,7 @@ import express from "express";
 import emailRoutes from "./routes/emailRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import { startMailboxCron } from "./cron/mailboxCron.js";
 
 import cors from "cors";
 import "dotenv/config";
@@ -14,6 +15,8 @@ app.use(cors());
 app.use("/api", emailRoutes);
 app.use("/api", aiRoutes);
 app.use("/api", authRoutes);
+
+startMailboxCron();
 
 //Allow only your frontend domain & uncomment this on backend server
 
