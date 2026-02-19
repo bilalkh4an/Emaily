@@ -462,7 +462,8 @@ async function fetchRawEmails(account) {
       if (mailbox.exists === 0) continue;
 
       const lastUID = account.lastSyncedUIDs.get(folder) || 0;
-      const fetchRange = lastUID > 0 ? `${lastUID + 1}:*` : "1:*";
+      const highestUID = mailbox.uidNext;
+      const fetchRange = lastUID > 0 ? `${lastUID+1}:${highestUID}` : "1:*";
       let maxUID = lastUID;
 
       for await (let message of client.fetch({ uid: fetchRange }, { source: true, uid: true })) {
