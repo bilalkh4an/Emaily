@@ -16,7 +16,7 @@ app.use("/api", emailRoutes);
 app.use("/api", aiRoutes);
 app.use("/api", authRoutes);
 
-startMailboxCron();
+//startMailboxCron();
 
 //Allow only your frontend domain & uncomment this on backend server
 

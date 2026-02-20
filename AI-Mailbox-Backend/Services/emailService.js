@@ -5,8 +5,6 @@ import nodemailer from "nodemailer";
 import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 
-
-
 export async function fetchMailbox(userId) {
   const accounts = await EmailAccount.find({ userId });
   if (!accounts.length) throw new Error("Account not found");
@@ -24,7 +22,7 @@ export async function fetchMailbox(userId) {
       for (const thread of threads) {
         await linkAndSaveThread(userId, account.email, thread);
       }
-      
+
       console.log(`✅ Sync complete for: ${account.email}`);
     } catch (error) {
       console.error(`❌ IMAP Error for ${account.email}:`, error);
@@ -261,7 +259,10 @@ function buildThreads(emails) {
         references: email.references, // <--- ADD THIS
         sender: email.from.replace(/"/g, ""),
         folder: email.folder,
-        time: new Date(email.date).toLocaleTimeString([], {
+        time: new Date(email.date).toLocaleString([], {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
           hour: "2-digit",
           minute: "2-digit",
         }),
@@ -271,10 +272,13 @@ function buildThreads(emails) {
       })),
       subject: group[0].subject,
       sender: displayRecipient.replace(/"/g, ""),
-      time: new Date(group[group.length - 1].date).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+       time: new Date(group[group.length - 1].date).toLocaleString([], {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       unread: group.some((e) => e.unread), // optional
     };
   });
@@ -283,14 +287,13 @@ function buildThreads(emails) {
   return threads.sort((a, b) => new Date(b.time) - new Date(a.time));
 }
 
-
 async function fetchRawEmails(account) {
   const client = new ImapFlow({
     host: account.imapHost,
     port: account.imapPort || 993,
     secure: true,
     auth: { user: account.email, pass: account.password },
-    logger: false 
+    logger: false,
   });
 
   const emails = [];
@@ -299,14 +302,19 @@ async function fetchRawEmails(account) {
   try {
     const folders = ["Inbox", "Sent"];
     for (const folder of folders) {
-      const mailbox = await client.mailboxOpen(folder=="Inbox" ? "INBOX":folder);
+      const mailbox = await client.mailboxOpen(
+        folder == "Inbox" ? "INBOX" : folder,
+      );
       if (mailbox.exists === 0) continue;
 
       const lastUID = account.lastSyncedUIDs.get(folder) || 0;
       const highestUID = mailbox.uidNext;
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const fetchRange = lastUID > 0 ? { uid: `${lastUID + 1}:${highestUID}`}: {since: thirtyDaysAgo };
+      const fetchRange =
+        lastUID > 0
+          ? { uid: `${lastUID + 1}:${highestUID}` }
+          : { since: thirtyDaysAgo };
       let maxUID = lastUID;
 
       // Below Code to fetch last 500 Emaily if new account
@@ -314,10 +322,12 @@ async function fetchRawEmails(account) {
       // const HighestUID = mailbox.uidNext - 1;
       // const windowSize = 500;
       // const minUID = Math.max(1, HighestUID - windowSize + 1);
-      // const fetchRange = lastUID > 0 ? { uid: `${lastUID + 1}:${highestUID}`}: {uid: `${minUID}:${HighestUID}` };     
-      
+      // const fetchRange = lastUID > 0 ? { uid: `${lastUID + 1}:${highestUID}`}: {uid: `${minUID}:${HighestUID}` };
 
-      for await (let message of client.fetch(fetchRange, { source: true, uid: true })) {
+      for await (let message of client.fetch(fetchRange, {
+        source: true,
+        uid: true,
+      })) {
         const parsed = await simpleParser(message.source);
         emails.push({
           uid: message.uid,
@@ -354,8 +364,10 @@ function groupEmailsIntoThreads(emails) {
 }
 
 async function linkAndSaveThread(userId, accountEmail, thread) {
-  const newBatchIds = thread.messages.map(m => m.messageId).filter(Boolean);
-  const newBatchParents = thread.messages.map(m => m.inReplyTo).filter(Boolean);
+  const newBatchIds = thread.messages.map((m) => m.messageId).filter(Boolean);
+  const newBatchParents = thread.messages
+    .map((m) => m.inReplyTo)
+    .filter(Boolean);
 
   // Check if thread exists in DB
   const existingRecord = await EmailMemory.findOne({
@@ -372,9 +384,13 @@ async function linkAndSaveThread(userId, accountEmail, thread) {
 
   if (existingRecord) {
     threadIdToUse = existingRecord.threadId;
-    const existingIds = new Set(existingRecord.messages.map(m => m.messageId));
-    const trulyNew = thread.messages.filter(m => !existingIds.has(m.messageId));
-    
+    const existingIds = new Set(
+      existingRecord.messages.map((m) => m.messageId),
+    );
+    const trulyNew = thread.messages.filter(
+      (m) => !existingIds.has(m.messageId),
+    );
+
     // Merge history with new emails
     finalMessages = [...existingRecord.messages, ...trulyNew];
   }
@@ -387,10 +403,10 @@ async function linkAndSaveThread(userId, accountEmail, thread) {
     thread.to,
     thread.subject,
     thread.time,
-    thread.messages.some(m => m.unread),
+    thread.messages.some((m) => m.unread),
     thread.avatar,
     finalMessages,
     threadIdToUse,
-    "user"
+    "user",
   );
 }

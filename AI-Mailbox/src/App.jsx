@@ -44,7 +44,6 @@ function App() {
   const fetchMailbox = async () => {
     const token = localStorage.getItem("token"); // 👈 Get token
     try {
-      
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/emails/fetch`,
         {
@@ -59,7 +58,6 @@ function App() {
       }
 
       const result = await res.json(); // 👈 important
-
     } catch (error) {
       console.error("Error fetching emails:", error);
     } finally {
@@ -108,12 +106,12 @@ function App() {
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/emailaccounts`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
         },
-      }
-    );
+      );
 
       if (!res.ok) {
         throw new Error("Failed to fetch emails");
@@ -140,7 +138,7 @@ function App() {
     "Trash",
   ]);
 
-  const [activeFolder, setActiveFolder] = useState("Inbox"); 
+  const [activeFolder, setActiveFolder] = useState("Inbox");
   const [activeTab, setActiveTab] = useState("All Mail");
   const [isAIReplyOpen, setIsAIReplyOpen] = useState(false);
 
@@ -158,27 +156,28 @@ function App() {
   });
 
   const [searchQuery, setSearchQuery] = useState("");
-  const openEmail = allEmails.find((e) => e.id === selectedEmail);  
+  const openEmail = allEmails.find((e) => e.id === selectedEmail);
 
-  const filteredEmails = allEmails.filter((email) => {
-    const matchesFolder = email.messages?.some(
-      (msg) => msg.folder === activeFolder,
-    );
-    const matchesAccount =
-      activeTab === "All Mail" || email.account === activeTab;
-    const matchesSearch =
-      email.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.subject.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredEmails = allEmails
+    .filter((email) => {
+      const matchesFolder = email.messages?.some(
+        (msg) => msg.folder === activeFolder,
+      );
+      const matchesAccount =
+        activeTab === "All Mail" || email.account === activeTab;
+      const matchesSearch =
+        email.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.subject.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return matchesFolder && matchesAccount && matchesSearch;
-  })
-   .sort((a, b) => {
-    // Get latest message date in each email thread
-    const aDate = new Date(a.messages[a.messages.length - 1]?.date || 0);
-    const bDate = new Date(b.messages[b.messages.length - 1]?.date || 0);
-    
-    return bDate - aDate; // descending => latest first
-  });
+      return matchesFolder && matchesAccount && matchesSearch;
+    })
+    .sort((a, b) => {
+      // Get latest message date in each email thread
+      const aDate = new Date(a.messages[a.messages.length - 1]?.date || 0);
+      const bDate = new Date(b.messages[b.messages.length - 1]?.date || 0);
+
+      return bDate - aDate; // descending => latest first
+    });
 
   // 3. Conditional Rendering
   if (!isAuthenticated) {

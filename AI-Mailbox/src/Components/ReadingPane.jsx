@@ -63,7 +63,7 @@ const ReadingPane = ({
                           </p>
                           <span className="text-xs text-gray-500 whitespace-nowrap flex items-center gap-1">
                             <Clock size={11} />
-                            {msg.time}
+                            {msg.time}  
                           </span>
                         </div>
                         <p className="text-xs text-gray-600">
