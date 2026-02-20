@@ -5,165 +5,6 @@ import nodemailer from "nodemailer";
 import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 
-// export async function fetchMailbox(userId) {
-//   const accounts = await EmailAccount.find({ userId });
-//   if (!accounts.length) throw new Error("Account not found");
-  
-
-//   for (const account of accounts) {
-//     const client = new ImapFlow({
-//       host: account.imapHost,
-//       port: account.imapPort || 993,
-//       secure: true,
-//       auth: { user: account.email, pass: account.password },
-//       logger: {
-//         debug: (msg) => {}, // ignore
-//         info: console.info, // ignore info messages
-//         warn: console.warn,
-//         error: console.error,
-//       },
-//     });
-//     let emails = [];
-
-//     try {
-//       await client.connect();
-
-//       const inboxLock = await client.getMailboxLock("INBOX");
-//       const sentLock = await client.getMailboxLock("Sent");
-//       const folders = ["Inbox", "Sent"];
-
-//       try {
-//         for (const foldervalue of folders) {
-//           const mailbox = await client.mailboxOpen(foldervalue);
-
-//           if (mailbox.exists === 0) {
-//             console.log(`ℹ️ Folder "${foldervalue}" is empty. Skipping fetch.`);
-//             continue;
-//           }
-
-//           const lastUID = account.lastSyncedUIDs.get(foldervalue) || 0;
-//           const highestUID = mailbox.uidNext;
-//           const fetchRange =
-//             lastUID > 0 ? `${lastUID + 1}:${highestUID}` : "1:*";
-//           let maxUID = lastUID;
-
-//           for await (let message of client.fetch(
-//             { uid: fetchRange },
-//             {
-//               source: true,
-//               envelope: true,
-//               uid: true,
-//             },
-//           )) {
-//             const parsed = await simpleParser(message.source);
-//             emails.push({
-//               uid: message.uid,
-//               messageId: parsed.messageId,
-//               inReplyTo: parsed.inReplyTo,
-//               references: parsed.references,
-//               subject: parsed.subject,
-//               from: parsed.from?.text,
-//               to: parsed.to?.text,
-//               date: parsed.date,
-//               text: parsed.text,
-//               folder: foldervalue, // keep folder per email
-//             });
-
-//             if (message.uid > maxUID) maxUID = message.uid;
-//           }
-
-//           if (maxUID > lastUID) {
-//             account.lastSyncedUIDs.set(foldervalue, maxUID);
-//             await account.save();
-//           }
-//         }
-//       } finally {
-//         inboxLock.release();
-//         sentLock.release();
-//       }
-
-//       await client.logout();
-
-//       // Step 1: Build threads from all fetched emails
-
-//       let threads = buildThreads(emails).map((thread) => {
-//         return {
-//           ...thread,
-//           to: thread.to, // fallback if `to` is missing
-//           folder: "Inbox", // first message folder
-//           avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(thread.sender)}`, // avatar
-//         };
-//       });
-
-//       // Step 2: Save each thread to DB
-//       for (const thread of threads) {
-//         // 1. Gather IDs from the new batch to search the DB
-//         const newBatchIds = thread.messages
-//           .map((m) => m.messageId)
-//           .filter(Boolean);
-//         const newBatchParents = thread.messages
-//           .map((m) => m.inReplyTo)
-//           .filter(Boolean);
-
-//         // 2. Find if this conversation already exists in your DB
-//         const existingRecord = await EmailMemory.findOne({
-//           userId: userId,
-//           $or: [
-//             { "messages.messageId": { $in: newBatchIds } },
-//             { "messages.messageId": { $in: newBatchParents } },
-//             { subject: thread.subject, sender: thread.sender }, // Fallback to subject
-//           ],
-//         });
-
-//         let finalMessagesToSave = thread.messages;
-//         let threadIdToUse = thread.threadId;
-
-//         if (existingRecord) {
-//           // Found an existing thread! Use its threadId to keep it grouped.
-//           threadIdToUse = existingRecord.threadId;
-
-//           // 3. MERGE: Add new messages to the existing 7 messages
-//           const existingMessageIds = new Set(
-//             existingRecord.messages.map((m) => m.messageId),
-//           );
-
-//           const trulyNewMessages = thread.messages.filter(
-//             (m) => !existingMessageIds.has(m.messageId),
-//           );
-
-//           // History + New = No deleted messages
-//           finalMessagesToSave = [
-//             ...existingRecord.messages,
-//             ...trulyNewMessages,
-//           ];
-//         }
-
-//         console.log("Account",account.email);
-
-//         // 4. Save using the original threadId if found
-//         await saveFetchEmail(
-//           userId,
-//           thread.folder,
-//           account.email,
-//           thread.sender,
-//           thread.to,
-//           thread.subject,
-//           thread.time,
-//           thread.messages.some((m) => m.unread),
-//           thread.avatar,
-//           finalMessagesToSave,
-//           threadIdToUse,
-//           "user",
-//         );
-//         console.log("Added",account.email);
-//       }
-//     } catch (error) {
-//       console.error("IMAP Error:", error);
-//       throw error;
-//     }
-//   }
-//   return "Sync Finished"; // return to caller
-// }
 
 
 export async function fetchMailbox(userId) {
@@ -463,10 +304,20 @@ async function fetchRawEmails(account) {
 
       const lastUID = account.lastSyncedUIDs.get(folder) || 0;
       const highestUID = mailbox.uidNext;
-      const fetchRange = lastUID > 0 ? `${lastUID+1}:${highestUID}` : "1:*";
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const fetchRange = lastUID > 0 ? { uid: `${lastUID + 1}:${highestUID}`}: {since: thirtyDaysAgo };
       let maxUID = lastUID;
 
-      for await (let message of client.fetch({ uid: fetchRange }, { source: true, uid: true })) {
+      // Below Code to fetch last 500 Emaily if new account
+
+      // const HighestUID = mailbox.uidNext - 1;
+      // const windowSize = 500;
+      // const minUID = Math.max(1, HighestUID - windowSize + 1);
+      // const fetchRange = lastUID > 0 ? { uid: `${lastUID + 1}:${highestUID}`}: {uid: `${minUID}:${HighestUID}` };     
+      
+
+      for await (let message of client.fetch(fetchRange, { source: true, uid: true })) {
         const parsed = await simpleParser(message.source);
         emails.push({
           uid: message.uid,

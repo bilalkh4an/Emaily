@@ -44,6 +44,7 @@ function App() {
   const fetchMailbox = async () => {
     const token = localStorage.getItem("token"); // 👈 Get token
     try {
+      
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/emails/fetch`,
         {
@@ -170,6 +171,13 @@ function App() {
       email.subject.toLowerCase().includes(searchQuery.toLowerCase());
 
     return matchesFolder && matchesAccount && matchesSearch;
+  })
+   .sort((a, b) => {
+    // Get latest message date in each email thread
+    const aDate = new Date(a.messages[a.messages.length - 1]?.date || 0);
+    const bDate = new Date(b.messages[b.messages.length - 1]?.date || 0);
+    
+    return bDate - aDate; // descending => latest first
   });
 
   // 3. Conditional Rendering
