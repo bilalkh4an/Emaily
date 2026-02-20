@@ -1,4 +1,5 @@
 import { Ollama } from "ollama";
+import 'dotenv/config'; 
 const ollama = new Ollama({ host: "http://185.119.109.61:11434" });
 
 export async function VoiceTraining(initialEmails) {
@@ -71,9 +72,10 @@ export async function generateAIPrompt(
   console.log(systemInstructions);
   // 3. GENERATE FINAL DRAFT
   const stream = await ollama.generate({
-    model: "llama4:17b-scout-16e-instruct-q4_K_M",
+    model: process.env.DRAFT_MODEL,
     system: systemInstructions,
     prompt: userPrompt,
+    keep_alive: '2h',
     stream: true,
     options: {
       temperature: 0.4, // Keep it professional and focused

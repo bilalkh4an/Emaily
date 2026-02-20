@@ -61,6 +61,7 @@ const emailMemorySchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  date: Date,
 });
 
 // Optimization: Create a compound index for fast thread retrieval per user

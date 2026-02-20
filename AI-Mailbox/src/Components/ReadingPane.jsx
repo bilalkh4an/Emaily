@@ -73,9 +73,9 @@ const ReadingPane = ({
                     </div>
 
                     {/* Message Body */}
-                    <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                    <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line break-words">
                       {msg.body}
-                    </div>
+                    </div>                    
 
                     {/* Attachments if any */}
                     {msg.attachments?.length > 0 && (
@@ -121,13 +121,13 @@ const ReadingPane = ({
                     <span>Reply All</span>
                   </button>
 
-                  <button
+                  {/* <button
                     onClick={() => setIsAIReplyOpen(true)}
                     className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-gradient-to-r from-purple-50 to-blue-50 text-purple-600 rounded-lg text-sm font-bold border-2 border-purple-200/50 hover:from-purple-100 hover:to-blue-100 hover:border-purple-300/50 transition-all active:scale-95 shadow-sm"
                   >
                     <Sparkles size={16} />
                     <span>AI Reply</span>
-                  </button>
+                  </button> */}
 
                   <button
                     onClick={() => handleAction("forward", openEmail)}

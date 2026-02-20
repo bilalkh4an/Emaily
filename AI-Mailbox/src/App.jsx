@@ -158,26 +158,18 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const openEmail = allEmails.find((e) => e.id === selectedEmail);
 
-  const filteredEmails = allEmails
-    .filter((email) => {
-      const matchesFolder = email.messages?.some(
-        (msg) => msg.folder === activeFolder,
-      );
-      const matchesAccount =
-        activeTab === "All Mail" || email.account === activeTab;
-      const matchesSearch =
-        email.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        email.subject.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredEmails = allEmails.filter((email) => {
+    const matchesFolder = email.messages?.some(
+      (msg) => msg.folder === activeFolder,
+    );
+    const matchesAccount =
+      activeTab === "All Mail" || email.account === activeTab;
+    const matchesSearch =
+      email.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.subject.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return matchesFolder && matchesAccount && matchesSearch;
-    })
-    .sort((a, b) => {
-      // Get latest message date in each email thread
-      const aDate = new Date(a.messages[a.messages.length - 1]?.date || 0);
-      const bDate = new Date(b.messages[b.messages.length - 1]?.date || 0);
-
-      return bDate - aDate; // descending => latest first
-    });
+    return matchesFolder && matchesAccount && matchesSearch;
+  });
 
   // 3. Conditional Rendering
   if (!isAuthenticated) {
@@ -228,7 +220,7 @@ function App() {
         <main
           className={`${
             selectedEmail ? "hidden lg:flex" : " flex"
-          } flex-1 lg:max-w-md border-r border-gray-100 flex-col h-full bg-white relative`}
+          } w-screen flex-1 sm:max-w-md border-r border-gray-100 flex-col h-full bg-white relative`}
         >
           <TopNav
             folders={folders}

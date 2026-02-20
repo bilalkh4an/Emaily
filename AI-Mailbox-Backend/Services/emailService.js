@@ -4,6 +4,7 @@ import { EmailAccount } from "../models/EmailAccount.js";
 import nodemailer from "nodemailer";
 import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
+import EmailReplyParser from "email-reply-parser";
 
 export async function fetchMailbox(userId) {
   const accounts = await EmailAccount.find({ userId });
@@ -32,9 +33,33 @@ export async function fetchMailbox(userId) {
 }
 
 export async function fetchSentEmails(userId) {
-  const account = await EmailMemory.find({ userId });
+  const account = await EmailMemory.find({ userId }).sort({ date: -1 });
   if (!account) throw new Error("Account not found");
   return account;
+
+  // sort threads as per latest inbox message
+
+  // const threads = await EmailMemory.aggregate([
+  //   // Step 1: Compute latest Inbox message date per thread
+  //   {
+  //     $addFields: {
+  //       latestInboxMessageDate: {
+  //         $max: {
+  //           $map: {
+  //             input: "$messages",
+  //             as: "msg",
+  //             in: {
+  //               $cond: [{ $eq: ["$$msg.folder", "Inbox"] }, "$$msg.date", null],
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //   },
+  //   // Step 2: Sort threads by latestInboxMessageDate descending
+  //   { $sort: { latestInboxMessageDate: -1 } },
+  // ]);
+  // return threads;
 }
 
 export async function EmailAccounts(userId) {
@@ -146,6 +171,7 @@ async function saveFetchEmail(
   messages,
   threadId,
   role,
+  date,
 ) {
   try {
     if (!threadId) {
@@ -170,6 +196,7 @@ async function saveFetchEmail(
           avatar,
           messages: sortedMessages, // Use the sorted array here
           role: "user",
+          date,
         },
       },
       {
@@ -272,14 +299,15 @@ function buildThreads(emails) {
       })),
       subject: group[0].subject,
       sender: displayRecipient.replace(/"/g, ""),
-       time: new Date(group[group.length - 1].date).toLocaleString([], {
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+      time: new Date(group[group.length - 1].date).toLocaleString([], {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
       unread: group.some((e) => e.unread), // optional
+      date: group[group.length - 1].date,
     };
   });
 
@@ -329,6 +357,9 @@ async function fetchRawEmails(account) {
         uid: true,
       })) {
         const parsed = await simpleParser(message.source);
+        const parser = new EmailReplyParser();
+        const lastMessage = parser.read(parsed.text).getVisibleText();
+
         emails.push({
           uid: message.uid,
           messageId: parsed.messageId,
@@ -338,7 +369,7 @@ async function fetchRawEmails(account) {
           from: parsed.from?.text,
           to: parsed.to?.text,
           date: parsed.date,
-          text: parsed.text,
+          text: lastMessage,
           folder: folder,
         });
         if (message.uid > maxUID) maxUID = message.uid;
@@ -408,5 +439,6 @@ async function linkAndSaveThread(userId, accountEmail, thread) {
     finalMessages,
     threadIdToUse,
     "user",
+    thread.date,
   );
 }
