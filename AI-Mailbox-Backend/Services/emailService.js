@@ -9,7 +9,11 @@ import { encrypt,decrypt } from "../utils/crypto.js";
 
 export async function fetchMailbox(userId) {
   const accounts = await EmailAccount.find({ userId });
-  if (!accounts.length) throw new Error("Account not found");
+  //if (!accounts.length) throw new Error("Account not found");
+  if (!accounts.length) {
+  console.log(`No accounts found for user ${userId}`);
+  return;
+}
 
   for (const account of accounts) {
     try {
