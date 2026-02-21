@@ -49,7 +49,7 @@ const ReadinPaneTopNav = ({
         </button>
 
         {/* Action Buttons */}
-        <div className="flex gap-1.5">
+        {/* <div className="flex gap-1.5">
           <button
             onClick={() => moveEmail(openEmail?.id, "Archive")}
             className="relative group p-2 hover:bg-blue-50 rounded-lg transition-all active:scale-95"
@@ -96,11 +96,11 @@ const ReadinPaneTopNav = ({
               {openEmail?.unread ? "Mark as read" : "Mark as unread"}
             </span>
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* More Menu */}
-      <div className="relative">
+      {/* <div className="relative">
         <button
           onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
           className={`p-2 rounded-lg transition-all active:scale-95 ${
@@ -154,7 +154,7 @@ const ReadinPaneTopNav = ({
             </div>
           </>
         )}
-      </div>
+      </div> */}
     </header>
   );
 };

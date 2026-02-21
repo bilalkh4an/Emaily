@@ -57,9 +57,9 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const tabs = [
     { id: "Profile", icon: <User size={18} />, label: "Profile" },
     { id: "Accounts", icon: <Mail size={18} />, label: "Accounts" },
-    { id: "AI", icon: <Sparkles size={18} />, label: "AI Settings" },
-    { id: "Notifications", icon: <Bell size={18} />, label: "Notifications" },
-    { id: "Appearance", icon: <Palette size={18} />, label: "Appearance" },
+    // { id: "AI", icon: <Sparkles size={18} />, label: "AI Settings" },
+    // { id: "Notifications", icon: <Bell size={18} />, label: "Notifications" },
+    // { id: "Appearance", icon: <Palette size={18} />, label: "Appearance" },
   ];
 
   const handleImapAdd = async () => {
@@ -318,7 +318,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     <label className="text-[10px] font-black text-gray-400 uppercase px-1 tracking-wider">
                       Add New Account
                     </label>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    {/* <div className="grid grid-cols-2 gap-3 sm:gap-4">
                       {[
                         {
                           stage: "google",
@@ -346,7 +346,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
                           </span>
                         </button>
                       ))}
-                    </div>
+                    </div> */}
                     <button
                       onClick={() => setConfigStage("imap")}
                       className="w-full flex items-center justify-center gap-2 py-3.5 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50/50 transition-all font-bold text-sm active:scale-95"

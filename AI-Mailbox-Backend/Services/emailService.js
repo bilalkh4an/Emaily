@@ -5,6 +5,7 @@ import nodemailer from "nodemailer";
 import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 import EmailReplyParser from "email-reply-parser";
+import { encrypt,decrypt } from "../utils/crypto.js";
 
 export async function fetchMailbox(userId) {
   const accounts = await EmailAccount.find({ userId });
@@ -71,7 +72,9 @@ export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
   const accountDetails = await EmailAccount.findOne({
     userId,
     email: from,
-  }).populate("userId");
+  }).populate("userId");  
+
+  const decryptedPassword = decrypt(accountDetails.password);
 
   const transporter = nodemailer.createTransport({
     host: accountDetails.imapHost,
@@ -79,7 +82,7 @@ export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
     secure: true,
     auth: {
       user: accountDetails.email,
-      pass: accountDetails.password,
+      pass: decryptedPassword,
     },
   });
 
@@ -123,7 +126,7 @@ export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
       secure: true,
       auth: {
         user: accountDetails.email,
-        pass: accountDetails.password,
+        pass: decryptedPassword,
       },
       logger: false,
     });
@@ -148,9 +151,11 @@ export async function createImapAccount(
   imapPort,
   password,
 ) {
+  const encryptedPassword = encrypt(password);
+
   const account = await EmailAccount.findOneAndUpdate(
     { email }, // Find by email
-    { userId, email, imapHost, imapPort, password }, // Update these fields
+    { userId, email, imapHost, imapPort, password:encryptedPassword, }, // Update these fields
     { upsert: true, new: true }, // Create if doesn't exist
   );
 
@@ -316,11 +321,12 @@ function buildThreads(emails) {
 }
 
 async function fetchRawEmails(account) {
+  const decryptedPassword = decrypt(account.password);
   const client = new ImapFlow({
     host: account.imapHost,
     port: account.imapPort || 993,
     secure: true,
-    auth: { user: account.email, pass: account.password },
+    auth: { user: account.email, pass: decryptedPassword },
     logger: false,
   });
 
