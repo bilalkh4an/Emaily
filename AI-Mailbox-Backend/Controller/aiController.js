@@ -29,8 +29,15 @@ export const setupVoice = async (req, res) => {
 export const generateDraft = async (req, res) => {
   try {
     const userId = req.user.id; // comes from protect middleware
-    const { account, threadId, prompt, sessionHistory = [] } = req.body;
-    console.log("Account = "+account);
+    const {
+      account,
+      threadId,
+      prompt,
+      sessionHistory = [],
+      definedTone,
+      definedLength,
+    } = req.body;
+   
 
     // 1. Set SSE Headers immediately
     res.setHeader("Content-Type", "text/event-stream");
@@ -44,25 +51,41 @@ export const generateDraft = async (req, res) => {
     // ... (Keep your Voice DNA, Thread History, and Semantic Context logic exactly as is) ...
 
     const defaultDNA = {
-      tone: ["professional", "appreciative", "direct"],
+      tone: ["professional", "neutral", "polite"],
       vocabulary: [
+        "clarity",
         "collaboration",
-        "milestones",
-        "transparency",
-        "action items",
         "efficiency",
-        "documentation",
+        "feedback",
+        "guidelines",
+        "objectives",
+        "next steps",
       ],
       sentence_structure:
-        "concise, with an average length of 15-20 words per sentence",
-      communication_style: ["instructive", "collaborative", "objective"],
+        "clear and concise, averaging 15-20 words per sentence, with proper punctuation",
+      communication_style: ["informative", "concise", "respectful"],
+    };
+
+    const defindedDNA = {
+      tone: [definedTone],
+      vocabulary: [],
+      sentence_structure: definedLength,
+      communication_style: [],
     };
 
     const userRecord = await VoiceDNA.findOne({ userId, account });
-    const activeDNA = userRecord ? userRecord.voiceDNA : defaultDNA;
-
+    const activeDNA = definedTone
+      ? defindedDNA
+      : userRecord
+        ? userRecord.voiceDNA
+        : defaultDNA;
     // 2. Fetch Thread History from DB (Previous emails)
     const dbHistory = await EmailMemory.findOne({ userId, threadId });
+
+    // const dbHistory = await EmailMemory.findOne(
+    //   { userId, threadId },
+    //   { messages: { $slice: 10 } }, // only last 10
+    // );
 
     // 3. Combine DB History + Current Session Instructions
     const formattedHistory = [

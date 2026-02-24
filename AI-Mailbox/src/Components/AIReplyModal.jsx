@@ -2,14 +2,21 @@ import React, { useState } from "react";
 import Dropdown from "./Dropdown";
 import { X, Sparkles, Wand2, Loader2 } from "lucide-react";
 
-const AIReplyModal = ({ isOpen, onClose, onInsert, userId, openEmail,composeData }) => {
+const AIReplyModal = ({
+  isOpen,
+  onClose,
+  onInsert,
+  userId,
+  openEmail,
+  composeData,
+}) => {
   const [prompt, setPrompt] = useState(
     "Mention we can meet Thursday and ask for the updated contract.",
   );
 
- 
-
-  const options1 = ["Default Tone", "Formal", "Casual", "Friendly"];
+  const [includeThread, setIncludeThread] = useState(false);
+  const [voiceDNA, setVoiceDNA] = useState(false);
+  const options1 = ["Formal", "Casual", "Friendly", "Professional", "Appreciative", "Direct", "Urgent"];
   const options2 = ["Short", "Medium", "Long"];
   // Inside your component, add a new state to track the session chat
   const [sessionHistory, setSessionHistory] = useState([]);
@@ -32,21 +39,24 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, openEmail,composeData
       console.log("THread ID in AI assist Model " + composeData.threadid);
       console.log("Sending From " + composeData.from);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/draft`, { 
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/draft`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            account: composeData.from,
+            threadId: includeThread ? composeData.threadid : null,
+            prompt: prompt,
+            sessionHistory: updatedHistory, // Sending the full session context
+            definedTone: voiceDNA ? null : tone,
+            definedLength: voiceDNA ? null : length,
+          }),
         },
-        body: JSON.stringify({ 
-          account: composeData.from,         
-          threadId: composeData.threadid,  //change this as this will have the id of open thread which dont close
-          prompt: prompt,
-          sessionHistory: updatedHistory, // Sending the full session context
-          tone,
-          length,
-        }),
-      });
+      );
 
       if (!response.ok) throw new Error("Stream failed");
 
@@ -128,10 +138,10 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, openEmail,composeData
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-end sm:items-center sm:pb-0 pb-safe z-[70] p-4">
-      <div className="bg-white w-full max-w-[900px] max-h-[90dvh] sm:max-h-[85dvh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/50  flex justify-center items-end sm:items-center sm:pb-0 pb-safe z-[70] p-4">
+      <div className="bg-white w-full max-w-[900px] h-[80dvh] sm:h-auto sm:max-h-[85dvh] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50">
+        <div className="flex-shrink-0 flex items-center justify-between p-5 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-xl text-white shadow-lg">
               <Sparkles size={20} />
@@ -154,17 +164,17 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, openEmail,composeData
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto touch-pan-y p-6 space-y-6 bg-gradient-to-b from-gray-50/30 to-white">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white overscroll-none">
           {/* Prompt & Options */}
           <div className="md:flex md:gap-6">
-            <div className="flex gap-3 md:flex-col md:w-1/4 mb-5 md:mb-0">
-              <div className="w-full">
+            <div className="sm:w-1/4 mb-5 sm:mb-0">
+              <div className={`w-full py-5 ${voiceDNA ? "hidden" : "block"}`}>
                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-2">
                   Tone
                 </label>
                 <Dropdown options={options1} value={tone} onChange={setTone} />
               </div>
-              <div className="w-full">
+              <div className={`w-full ${voiceDNA ? "hidden" : "block"}`}>
                 <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-2">
                   Length
                 </label>
@@ -174,6 +184,55 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, openEmail,composeData
                   onChange={setLength}
                 />
               </div>
+              <div
+                className={`pt-5 border-t border-gray-50`}
+              >
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] block mb-4 ">
+                  Context Settings
+                </label>
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="text-xs font-semibold text-gray-600 group-hover:text-gray-900 transition-colors">
+                    Include Voice DNA
+                  </span>
+                  <div className="relative inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={voiceDNA}
+                      onChange={(e) => setVoiceDNA(e.target.checked)}
+                    />
+                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </div>
+                </label>
+                <p className="text-[10px] text-gray-400 mt-2 leading-relaxed ">
+                  Disabling this will bypass the trained Voice DNA and use the
+                  current parameters instead.
+                </p>
+              </div>
+              <div
+                className={`pt-5 border-t border-gray-50 ${composeData.threadid ? "block" : "hidden"}`}
+              >
+                
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="text-xs font-semibold text-gray-600 group-hover:text-gray-900 transition-colors">
+                    Include Thread
+                  </span>
+                  <div className="relative inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={includeThread}
+                      onChange={(e) => setIncludeThread(e.target.checked)}
+                    />
+                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </div>
+                </label>
+                <p className="text-[10px] text-gray-400 mt-2 leading-relaxed ">
+                  Turning this off will make the AI ignore previous messages and
+                  faster AI Response.
+                </p>
+              </div>
+              
             </div>
 
             <div className="md:w-3/4">
@@ -188,7 +247,13 @@ const AIReplyModal = ({ isOpen, onClose, onInsert, userId, openEmail,composeData
                   autoCorrect="off"
                   spellCheck="false"
                   className="bg-transparent w-full text-base text-gray-800 focus:outline-none resize-none font-medium placeholder:text-gray-400"
-                  rows="3"
+                  
+                  rows={
+                    composeData.threadid && voiceDNA ? 5
+                    : composeData.threadid ? 12                   
+                    : voiceDNA === false ? 8
+                    : 4
+                  }
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Describe what you want to say..."

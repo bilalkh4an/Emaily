@@ -1,1 +1,68 @@
 @import "tailwindcss";
+/* Custom Scrollbar for the Compose Editor */
+.custom-scrollbar::-webkit-scrollbar { 
+  width: 8px !important; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+  background: #f1f5f9 !important; 
+  border-radius: 20px !important; 
+  border: 2px solid white !important; 
+}
+.custom-scrollbar:hover::-webkit-scrollbar-thumb { 
+  background: #e2e8f0 !important; 
+}
+
+/* Tiptap Editor Core Styles */
+.tiptap.ProseMirror { 
+  height: 100%; 
+  overflow-y: auto; 
+  outline: none !important; 
+  white-space: pre-wrap !important; 
+}
+
+/* Paragraph and Text Spacing */
+.tiptap.ProseMirror p {
+  margin: 0 !important;
+  line-height: 1.5;
+}
+
+/* Headings */
+.tiptap.ProseMirror h1 { 
+  font-size: 2em; 
+  font-weight: 800; 
+  margin-bottom: 0.5em; 
+}
+.tiptap.ProseMirror h2 { 
+  font-size: 1.5em; 
+  font-weight: 700; 
+  margin-bottom: 0.5em; 
+}
+
+/* Task Lists */
+.tiptap.ProseMirror ul[data-type="taskList"] { 
+  list-style: none; 
+  padding: 0; 
+}
+.tiptap.ProseMirror ul[data-type="taskList"] li { 
+  display: flex; 
+  align-items: flex-start; 
+  gap: 10px; 
+}
+
+/* Blockquote */
+.tiptap.ProseMirror blockquote { 
+  border-left: 4px solid #3b82f6; 
+  padding-left: 1.5rem; 
+  margin: 1.5rem 0; 
+  color: #475569; 
+  font-style: italic; 
+}
+
+/* Placeholder Styling */
+.tiptap.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left; 
+  color: #cbd5e1; 
+  pointer-events: none; 
+  height: 0;
+}

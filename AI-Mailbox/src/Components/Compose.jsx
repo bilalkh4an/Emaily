@@ -42,6 +42,11 @@ const Compose = ({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
+        paragraph: {
+          HTMLAttributes: {
+            style: "margin: 0;", // This injects the style directly into the HTML tag
+          },
+        },
         underline: false,
         link: false,
       }),
@@ -55,15 +60,30 @@ const Compose = ({
     content: composeData.body,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      // Update parent state only if content differs
+      const { selection } = editor.state;
+      const { can } = editor;
       if (html !== composeData.body) {
         setComposeData((prev) => ({ ...prev, body: html }));
       }
+      if (selection) {
+        editor.commands.scrollIntoView();
+      }
     },
+    // COMBINED editorProps into one single object
     editorProps: {
+      handleKeyDown: (view, event) => {
+        // If user presses Enter without Shift
+        if (event.key === "Enter" && !event.shiftKey) {
+          editor.commands.setHardBreak();
+          return true;
+        }
+        return false;
+      },
+
       attributes: {
+        // Added "tiptap" at the beginning
         class:
-          "focus:outline-none min-h-[350px] p-8 text-gray-700 leading-relaxed text-lg custom-scrollbar",
+          "tiptap focus:outline-none p-5 text-gray-700 leading-normal text-lg custom-scrollbar",
       },
     },
   });
@@ -79,21 +99,24 @@ const Compose = ({
   if (!isComposeOpen) return null;
   const handlesend = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/sentEmail`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/sentEmail`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            from: composeData.from,
+            to: composeData.to,
+            subject: composeData.subject,
+            body: editor.getText(),
+            //inReplyToId: openEmail?.threadid || "",
+            inReplyToId: composeData.threadid,
+          }),
         },
-        body: JSON.stringify({
-          from: composeData.from,
-          to: composeData.to,
-          subject: composeData.subject,
-          body: editor.getText(),
-          //inReplyToId: openEmail?.threadid || "",
-          inReplyToId: composeData.threadid,
-        }),
-      });
+      );
 
       if (!response.ok) throw new Error("Stream failed");
       if (response.ok) {
@@ -262,22 +285,7 @@ const Compose = ({
         />
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden bg-white">
-        <style>{`
-          .custom-scrollbar::-webkit-scrollbar { width: 8px; }
-          .custom-scrollbar::-webkit-scrollbar-thumb { background: #f1f5f9; border-radius: 20px; border: 2px solid white; }
-          .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: #e2e8h0; }
-          .ProseMirror { height: 100%; overflow-y: auto; outline: none; }
-          .ProseMirror h1 { font-size: 2em; font-weight: 800; margin-bottom: 0.5em; }
-          .ProseMirror h2 { font-size: 1.5em; font-weight: 700; margin-bottom: 0.5em; }
-          .ProseMirror ul[data-type="taskList"] { list-style: none; padding: 0; }
-          .ProseMirror ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 10px; }
-          .ProseMirror blockquote { border-left: 4px solid #3b82f6; padding-left: 1.5rem; margin: 1.5rem 0; color: #475569; font-style: italic; }
-          .ProseMirror p.is-editor-empty:first-child::before {
-            content: attr(data-placeholder);
-            float: left; color: #cbd5e1; pointer-events: none; height: 0;
-          }
-        `}</style>
+      <div className="flex-1 flex flex-col overflow-hidden bg-white">     
         <EditorContent editor={editor} className="flex-1 overflow-hidden" />
       </div>
 
