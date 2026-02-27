@@ -5,15 +5,15 @@ import nodemailer from "nodemailer";
 import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 import EmailReplyParser from "email-reply-parser";
-import { encrypt,decrypt } from "../utils/crypto.js";
+import { encrypt, decrypt } from "../utils/crypto.js";
 
 export async function fetchMailbox(userId) {
   const accounts = await EmailAccount.find({ userId });
   //if (!accounts.length) throw new Error("Account not found");
   if (!accounts.length) {
-  console.log(`No accounts found for user ${userId}`);
-  return;
-}
+    console.log(`No accounts found for user ${userId}`);
+    return;
+  }
 
   for (const account of accounts) {
     try {
@@ -37,34 +37,25 @@ export async function fetchMailbox(userId) {
   return "Sync Finished";
 }
 
-export async function fetchSentEmails(userId) {
-  const account = await EmailMemory.find({ userId }).sort({ date: -1 });
-  if (!account) throw new Error("Account not found");
-  return account;
+export async function fetchSentEmails(userId, page = 1, limit = 20) {
+  // Calculate how many emails to skip
+  const skip = (page - 1) * limit;
 
-  // sort threads as per latest inbox message
+  // 1. Fetch only the specific "slice" of emails
+  const emails = await EmailMemory.find({ userId })
+    .sort({ date: -1 }) // Keep newest first
+    .skip(skip)
+    .limit(limit);
 
-  // const threads = await EmailMemory.aggregate([
-  //   // Step 1: Compute latest Inbox message date per thread
-  //   {
-  //     $addFields: {
-  //       latestInboxMessageDate: {
-  //         $max: {
-  //           $map: {
-  //             input: "$messages",
-  //             as: "msg",
-  //             in: {
-  //               $cond: [{ $eq: ["$$msg.folder", "Inbox"] }, "$$msg.date", null],
-  //             },
-  //           },
-  //         },
-  //       },
-  //     },
-  //   },
-  //   // Step 2: Sort threads by latestInboxMessageDate descending
-  //   { $sort: { latestInboxMessageDate: -1 } },
-  // ]);
-  // return threads;
+  // 2. Get total count for the frontend to know if there's more to load
+  const total = await EmailMemory.countDocuments({ userId });
+
+  return {
+    emails,
+    total,
+    currentPage: page,
+    totalPages: Math.ceil(total / limit),
+  };
 }
 
 export async function EmailAccounts(userId) {
@@ -76,7 +67,7 @@ export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
   const accountDetails = await EmailAccount.findOne({
     userId,
     email: from,
-  }).populate("userId");  
+  }).populate("userId");
 
   const decryptedPassword = decrypt(accountDetails.password);
 
@@ -159,7 +150,7 @@ export async function createImapAccount(
 
   const account = await EmailAccount.findOneAndUpdate(
     { email }, // Find by email
-    { userId, email, imapHost, imapPort, password:encryptedPassword, }, // Update these fields
+    { userId, email, imapHost, imapPort, password: encryptedPassword }, // Update these fields
     { upsert: true, new: true }, // Create if doesn't exist
   );
 

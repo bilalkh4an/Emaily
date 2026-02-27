@@ -42,7 +42,7 @@ const Input = ({
   </div>
 );
 
-const SettingsModal = ({ isOpen, onClose }) => {
+const SettingsModal = ({ isOpen, onClose, username, useremail, account }) => {
   const [activeTab, setActiveTab] = useState("Profile");
   const [configStage, setConfigStage] = useState("list");
   const [emailaddress, setEmailaddress] = useState("");
@@ -65,13 +65,13 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const handleImapAdd = async () => {
     try {
       const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/create/imapaccount`,
+        `${import.meta.env.VITE_API_URL}/api/create/imapaccount`,
         {
           method: "POST",
           headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
           body: JSON.stringify({
             email: emailaddress,
             imapHost: imapHost,
@@ -263,24 +263,27 @@ const SettingsModal = ({ isOpen, onClose }) => {
                 <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 p-5 sm:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
                     <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-2xl sm:text-3xl shadow-xl shadow-blue-200 border-4 border-white">
-                      JD
+                      {username
+                        ? username
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()
+                        : "?"}
                     </div>
                     <div className="text-center sm:text-left flex-1">
                       <p className="font-black text-lg sm:text-xl text-gray-800 mb-1">
-                        John Doe
+                        {username}
                       </p>
                       <p className="text-xs sm:text-sm text-gray-600 font-semibold mb-3">
-                        john@emailshop.com
+                        {useremail}
                       </p>
-                      <button className="text-xs font-black text-blue-600 uppercase tracking-wider hover:text-blue-700 px-4 py-2 bg-white rounded-lg hover:shadow-md transition-all">
-                        Change Avatar
-                      </button>
                     </div>
                   </div>
-                  <Input label="Display Name" placeholder="John Doe" />
+                  <Input label="Display Name" placeholder={username} />
                   <Input
                     label="Email Address"
-                    placeholder="john@emailshop.com"
+                    placeholder={useremail}
                     disabled
                   />
                 </div>
@@ -293,25 +296,30 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     <label className="text-[10px] font-black text-gray-400 uppercase px-1 tracking-wider">
                       Connected Accounts
                     </label>
-                    <div className="flex items-center justify-between p-4 sm:p-5 bg-gradient-to-br from-white to-gray-50 border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-white shadow-lg shadow-red-200">
-                          <Mail size={20} />
+                    {account.map((emailAccount) => (
+                      <div
+                        key={emailAccount}
+                        className={` ${emailAccount == "All Mail" ? "hidden" : "block"} flex items-center justify-between p-4 sm:p-5 bg-gradient-to-br from-white to-gray-50 border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow`}
+                      >
+                        <div className="flex items-center gap-3 sm:gap-4">
+                          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-white shadow-lg shadow-red-200">
+                            <Mail size={20} />
+                          </div>
+                          <div>
+                            <p className="text-sm sm:text-base font-bold text-gray-800 tracking-tight">
+                              {emailAccount}
+                            </p>
+                            <p className="text-[10px] sm:text-[11px] text-green-600 font-black uppercase tracking-wide flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                              Connected
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm sm:text-base font-bold text-gray-800 tracking-tight">
-                            john.doe@gmail.com
-                          </p>
-                          <p className="text-[10px] sm:text-[11px] text-green-600 font-black uppercase tracking-wide flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                            Connected
-                          </p>
-                        </div>
-                      </div>
-                      <button className="text-[11px] font-black text-gray-400 hover:text-red-500 transition-colors px-3 py-1.5 hover:bg-red-50 rounded-lg">
+                        {/* <button className="text-[11px] font-black text-gray-400 hover:text-red-500 transition-colors px-3 py-1.5 hover:bg-red-50 rounded-lg">
                         Remove
-                      </button>
-                    </div>
+                      </button> */}
+                      </div>
+                    ))}
                   </div>
 
                   <div className="pt-6 border-t border-gray-100 space-y-4">

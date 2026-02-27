@@ -3,6 +3,7 @@ import React, { useState } from "react";
 const AuthSystem = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -15,11 +16,14 @@ const AuthSystem = ({ onLogin }) => {
     const endpoint = isLogin ? "/api/login" : "/api/register";
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}${endpoint}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, name }),
+        },
+      );
 
       const data = await response.json();
 
@@ -63,6 +67,19 @@ const AuthSystem = ({ onLogin }) => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <div className={` ${isLogin ? "hidden" : "block"}`}>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Full Name
+              </label>
+              <input
+                type="name"
+                required={!isLogin}                  
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Mic"
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              />
+            </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Email Address

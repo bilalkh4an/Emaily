@@ -21,6 +21,7 @@ const SideNav = ({
   setIsSettingsOpen,
   setIsLabOpen,
   onLogout,
+  username,
 }) => {
   const getIcon = (folder, isActive) => {
     const props = {
@@ -167,7 +168,7 @@ const SideNav = ({
             </div>
             <div className="min-w-0">
               <p className="text-[12px] font-bold text-gray-800 truncate">
-                John Doe
+                {username}
               </p>
               <p className="text-[10px] text-green-600 font-black uppercase">
                 Online

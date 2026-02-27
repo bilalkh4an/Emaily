@@ -1,20 +1,19 @@
 import React from "react";
 import { Search } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const EmailList = ({
   filteredEmails,
   setSelectedEmail,
   selectedEmail,
   activeFolder,
+  onScroll,
+  isLoading,
 }) => {
   return (
     <div
-      className="flex-1 overflow-y-auto pb-24 
-      [&::-webkit-scrollbar]:w-1.5
-      [&::-webkit-scrollbar-track]:bg-transparent
-      [&::-webkit-scrollbar-thumb]:bg-slate-200
-      [&::-webkit-scrollbar-thumb]:rounded-full
-      hover:[&::-webkit-scrollbar-thumb]:bg-slate-300"
+      onScroll={onScroll}
+      className="flex-1 overflow-y-auto" // This creates the internal scroll
     >
       {filteredEmails.map((email) => {
         const isActive = selectedEmail === email.id;
@@ -105,7 +104,7 @@ const EmailList = ({
         );
       })}
 
-      {filteredEmails.length === 0 && (
+      {filteredEmails.length === 0 && !isLoading && (
         <div className="flex flex-col items-center justify-center py-20 px-10 text-center">
           <div className="bg-gray-50 p-4 rounded-full mb-4">
             <Search size={24} className="text-gray-300" />
@@ -114,6 +113,14 @@ const EmailList = ({
           <p className="text-gray-400 text-sm">
             Try adjusting your search or filters
           </p>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center py-20 px-10 text-center">
+          <div className="flex justify-center">
+            <Loader2 size={18} className="animate-spin" />
+          </div>
         </div>
       )}
     </div>

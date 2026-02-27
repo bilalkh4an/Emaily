@@ -19,7 +19,11 @@ export const getEmailAccounts = async (req, res) => {
 export const getConversation = async (req, res) => {
   try {
     const userId = req.user.id; // comes from protect middleware
-    const emails = await fetchSentEmails(userId);
+    // Get page and limit from query, or use defaults
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const emails = await fetchSentEmails(userId, page, limit);
     res.json(emails);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -30,7 +34,14 @@ export const sendEmailHandler = async (req, res) => {
   const { from, to, subject, body, inReplyToId } = req.body;
   try {
     const userId = req.user.id; // comes from protect middleware
-    const result = await sentEmail( from, to, subject, body, userId, inReplyToId); 
+    const result = await sentEmail(
+      from,
+      to,
+      subject,
+      body,
+      userId,
+      inReplyToId,
+    );
     res.json(result);
   } catch (error) {
     console.error("Send email error:", error);

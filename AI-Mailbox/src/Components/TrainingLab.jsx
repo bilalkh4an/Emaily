@@ -26,6 +26,7 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
   const [isTraining, setIsTraining] = useState(false);
   const [trainStatus, setTrainStatus] = useState("");
   const [inboxdata, setInboxdata] = useState([{}]);
+  
 
   const showScreenSize = () => {
     alert(`Width: ${window.innerWidth}px, Height: ${window.innerHeight}px`);
@@ -48,7 +49,7 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
   const fetchEmailSent = async () => {
     const token = localStorage.getItem("token"); // 👈 Get token
     try {
-      console.log(selectedAccount);
+      
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/emails/conversation`, {
         headers: {
           Authorization: `Bearer ${token}`, // 👈 Pass token
@@ -61,7 +62,7 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
 
       const result = await res.json(); // 👈 important
 
-      const emailList = result
+      const emailList = result.emails
         .filter((item) => item.account === selectedAccount)
         .flatMap((item) =>
           item.messages
@@ -127,7 +128,7 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
       }
 
       setTrainStatus("✅ Voice DNA trained successfully");
-      console.log("Training success:", data);
+      
     } catch (error) {
       console.error(error);
       setTrainStatus("❌ Failed to train voice model");
@@ -210,7 +211,7 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
                     setSelectedAccount(email);
                     setSidebarOpen(false);
                   }}
-                  className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all ${
+                  className={` ${email=="All Mail" ? "hidden" : "block"} w-full p-4 rounded-2xl flex items-center justify-between transition-all ${
                     selectedAccount === email
                       ? "bg-slate-900 text-white shadow-xl"
                       : "hover:bg-slate-50 text-slate-500 bg-slate-50/50 xl:bg-transparent"

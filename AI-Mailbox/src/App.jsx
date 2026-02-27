@@ -24,13 +24,20 @@ function App() {
   });
 
   const [allEmails, setAllEmails] = useState([]);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [account, setAccount] = useState([]);
+
+  const [username, setUsername] = useState("");
+  const [useremail, setUseremail] = useState("");
 
   useEffect(() => {
     // Only fetch if we are actually authenticated
     if (isAuthenticated) {
       fetchEmails();
       fetchEmailAccounts();
+      getuser();
       //fetchMailbox();
     }
   }, [isAuthenticated]);
@@ -39,6 +46,30 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsAuthenticated(false);
+  };
+
+  const getuser = async () => {
+    const token = localStorage.getItem("token"); // 👈 Get token
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/userprofile`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // 👈 Pass token
+          },
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch emails");
+      }
+      const result = await res.json(); // 👈 important
+      setUsername(result.name);
+      setUseremail(result.email);
+    } catch (error) {
+      console.error("Error fetching emails:", error);
+    } finally {
+    }
   };
 
   const fetchMailbox = async () => {
@@ -64,25 +95,28 @@ function App() {
     }
   };
 
-  const fetchEmails = async () => {
-    const token = localStorage.getItem("token"); // 👈 Get token
+  const fetchEmails = async (pageNum = 1) => {
+    if (isLoading || (!hasMore && pageNum !== 1)) return;
+
+    setIsLoading(true);
+    const token = localStorage.getItem("token");
+
     try {
+      // Note: You will need to update your backend API to accept ?page=X
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/emails/conversation`,
+        `${import.meta.env.VITE_API_URL}/api/emails/conversation?page=${pageNum}&limit=10`,
         {
           headers: {
-            Authorization: `Bearer ${token}`, // 👈 Pass token
+            Authorization: `Bearer ${token}`,
           },
         },
       );
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch emails");
-      }
+      if (!res.ok) throw new Error("Failed to fetch emails");
 
-      const result = await res.json(); // 👈 important
+      const result = await res.json();
 
-      const formatted = result.map((email) => ({
+      const formatted = result.emails.map((email) => ({
         id: email._id,
         threadid: email.threadId,
         folder: email.folder,
@@ -95,10 +129,21 @@ function App() {
         messages: email.messages || [],
       }));
 
-      setAllEmails(formatted);
+      // 2. LOGIC FIX: Only set hasMore to false if we get LESS than our limit
+      if (formatted.length < 10) {
+        setHasMore(false);
+      } else {
+        setHasMore(true); // Keep it true if we hit the limit exactly
+      }
+
+      setAllEmails((prev) =>
+        pageNum === 1 ? formatted : [...prev, ...formatted],
+      );
+      setPage(pageNum);
     } catch (error) {
       console.error("Error fetching emails:", error);
     } finally {
+      setIsLoading(false);
     }
   };
 
@@ -203,6 +248,18 @@ function App() {
     );
   };
 
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    // Use "isLoading" because that is the state variable you defined
+    if (
+      scrollHeight - scrollTop <= clientHeight + 100 &&
+      hasMore &&
+      !isLoading
+    ) {
+      fetchEmails(page + 1);
+    }
+  };
+
   return (
     <>
       <div className="flex h-screen bg-white overflow-hidden text-[#1a1a1a] font-sans relative">
@@ -215,6 +272,7 @@ function App() {
           setIsSettingsOpen={setIsSettingsOpen}
           setIsLabOpen={setIsLabOpen}
           onLogout={handleLogout}
+          username={username}
         />
 
         <main
@@ -245,7 +303,18 @@ function App() {
             setSelectedEmail={setSelectedEmail}
             selectedEmail={selectedEmail}
             activeFolder={activeFolder}
+            onScroll={handleScroll} // Pass the function
+            isLoading={isLoading} // Pass the loading state
           />
+          {hasMore && (
+            <button
+              onClick={() => fetchEmails(page + 1)}
+              className="p-2 text-blue-500 text-sm font-medium"
+              disabled={isLoading}
+            >
+              {isLoading ? "Loading..." : "Load More"}
+            </button>
+          )}
 
           <BottomNav
             setActiveFolder={setActiveFolder}
@@ -311,6 +380,9 @@ function App() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        username={username}
+        useremail={useremail}
+        account={account}
       />
 
       <TrainingLab

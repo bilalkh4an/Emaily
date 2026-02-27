@@ -2,6 +2,7 @@ import express from "express";
 import emailRoutes from "./routes/emailRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import generalRoutes from "./routes/generalRoutes.js";
 import { startMailboxCron } from "./cron/mailboxCron.js";
 
 import cors from "cors";
@@ -15,6 +16,7 @@ app.use(cors());
 app.use("/api", emailRoutes);
 app.use("/api", aiRoutes);
 app.use("/api", authRoutes);
+app.use("/api", generalRoutes);
 
 //startMailboxCron();
 

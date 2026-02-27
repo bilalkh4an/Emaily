@@ -3,14 +3,14 @@ import jwt from "jsonwebtoken";
 
 export const register = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, name } = req.body;
     
 
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ message: "User already exists" });
 
-    const user = await User.create({ email, password });
+    const user = await User.create({ email, password, name });
     console.log(user)
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
