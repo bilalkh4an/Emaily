@@ -84,11 +84,11 @@ const SettingsModal = ({ isOpen, onClose, username, useremail, account }) => {
 
       if (!response.ok) throw new Error("Stream failed");
       if (response.ok) {
-        alert("Message Sent Successfully");
+        alert("Account Added Successfully");
       }
     } catch (error) {
       alert(error);
-      console.error("Failed to generate draft:", error);
+      console.error("Account not added", error);
     }
   };
 
@@ -108,11 +108,13 @@ const SettingsModal = ({ isOpen, onClose, username, useremail, account }) => {
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
+
       const data = await response.json();
+      // 2. Redirect the browser to the Google Consent screen
       window.location.href = data.url;
     } catch (error) {
-      alert(error);
-      console.error("Failed to generate draft:", error);
+      console.error("Failed to start Google Auth:", err);
+      alert("Could not connect to Google. Please try again.");
     }
   };
 
@@ -359,12 +361,12 @@ const SettingsModal = ({ isOpen, onClose, username, useremail, account }) => {
                           label: "Google Mail",
                           function1: "handleGoogleAdd",
                         },
-                        {
-                          stage: "outlook",
-                          icon: Cloud,
-                          color: "sky",
-                          label: "Outlook",
-                        },
+                        // {
+                        //   stage: "outlook",
+                        //   icon: Cloud,
+                        //   color: "sky",
+                        //   label: "Outlook",
+                        // },
                       ].map(({ stage, icon: Icon, color, label }) => (
                         <button
                           key={stage}

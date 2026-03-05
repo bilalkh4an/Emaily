@@ -7,7 +7,7 @@ import {
   sendEmailHandler,
   addImapAccount,
   getGoogleAuthUrl, 
-  handleGoogleCallback
+  handleGoogleCallback,
 } from "../Controller/emailController.js";
 
 
@@ -24,6 +24,7 @@ router.post('/google/auth-url',protect, getGoogleAuthUrl);
 
 // Google hits this automatically after the user logs in
 router.get('/google/callback', handleGoogleCallback);
+
 
 
 

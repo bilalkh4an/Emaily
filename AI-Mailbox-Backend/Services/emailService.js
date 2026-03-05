@@ -441,7 +441,7 @@ async function fetchRawEmails(account) {
         if (message.uid > maxUID) maxUID = message.uid;
       }
       
-      if (maxUID > lastUID) {        
+      if (maxUID > lastUID) {
         account.lastSyncedUIDs.set(storageKey, maxUID);
         await account.save();
       }

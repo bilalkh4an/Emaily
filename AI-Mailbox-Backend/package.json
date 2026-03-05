@@ -21,6 +21,7 @@
     "googleapis": "^171.4.0",
     "imapflow": "^1.2.8",
     "jsonwebtoken": "^9.0.3",
+    "jwt-decode": "^4.0.0",
     "mailparser": "^3.9.3",
     "mongodb": "^7.0.0",
     "mongoose": "^9.1.5",
