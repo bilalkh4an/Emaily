@@ -18,13 +18,14 @@
     "dotenv": "^17.2.3",
     "email-reply-parser": "^2.3.5",
     "express": "^5.2.1",
+    "googleapis": "^171.4.0",
     "imapflow": "^1.2.8",
     "jsonwebtoken": "^9.0.3",
     "mailparser": "^3.9.3",
     "mongodb": "^7.0.0",
     "mongoose": "^9.1.5",
     "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.0",
+    "nodemailer": "^8.0.1",
     "ollama": "^0.6.3",
     "socket.io": "^4.8.3"
   }

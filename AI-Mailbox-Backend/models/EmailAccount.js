@@ -8,11 +8,13 @@ const emailAccountSchema = new mongoose.Schema(
       required: true,
     },
     email: { type: String, required: true, unique: true },
+    refreshToken: { type: String },
+    authType: { type: String },
     imapHost: { type: String, required: true },
     imapPort: { type: Number, default: 993 },
     security: { type: String, default: "SSL" },
     // In a real app, you should encrypt this password before saving!
-    password: { type: String, required: true },
+    password: { type: String },
     status: {
       type: String,
       enum: ["active", "error", "pending"],

@@ -7,6 +7,7 @@ const MessageSchema = new mongoose.Schema(
     folder: String,
     time: String,
     body: String,
+    rawHtmlbody: String,
     avatar: String,
     date: Date,
     role: String

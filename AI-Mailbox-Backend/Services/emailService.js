@@ -6,6 +6,7 @@ import { EmailMemory } from "../models/EmailMemory.js";
 import MailComposer from "nodemailer/lib/mail-composer/index.js";
 import EmailReplyParser from "email-reply-parser";
 import { encrypt, decrypt } from "../utils/crypto.js";
+import { google } from "googleapis";
 
 export async function fetchMailbox(userId) {
   const accounts = await EmailAccount.find({ userId });
@@ -69,16 +70,28 @@ export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
     email: from,
   }).populate("userId");
 
-  const decryptedPassword = decrypt(accountDetails.password);
+  let authConfig;
+
+  if (accountDetails.authType === "google") {
+    authConfig = {
+      type: "OAuth2",
+      user: accountDetails.email,
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      refreshToken: decrypt(accountDetails.refreshToken), // Decrypt your stored token
+    };
+  } else {
+    authConfig = {
+      user: accountDetails.email,
+      pass: decrypt(accountDetails.password),
+    };
+  }
 
   const transporter = nodemailer.createTransport({
     host: accountDetails.imapHost,
     port: 465,
     secure: true,
-    auth: {
-      user: accountDetails.email,
-      pass: decryptedPassword,
-    },
+    auth: authConfig,
   });
 
   console.log(inReplyToId);
@@ -114,24 +127,23 @@ export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
       });
     });
 
-    // 3️⃣ Connect to IMAP and append to Sent
-    const client = new ImapFlow({
-      host: accountDetails.imapHost,
-      port: 993,
-      secure: true,
-      auth: {
-        user: accountDetails.email,
-        pass: decryptedPassword,
-      },
-      logger: false,
-    });
+    if (accountDetails.authType === "IMAP") {
+      // 3️⃣ Connect to IMAP and append to Sent
+      const client = new ImapFlow({
+        host: accountDetails.imapHost,
+        port: 993,
+        secure: true,
+        auth: authConfig,
+        logger: false,
+      });
 
-    await client.connect();
-    try {
-      await client.append("INBOX.Sent", rawMessage, ["\\Seen"]);
-      console.log("📁 Saved to Roundcube Sent folder");
-    } finally {
-      await client.logout();
+      await client.connect();
+      try {
+        await client.append("INBOX.Sent", rawMessage, ["\\Seen"]);
+        console.log("📁 Saved to Roundcube Sent folder");
+      } finally {
+        await client.logout();
+      }
     }
   } catch (error) {
     console.error("Send email error:", error);
@@ -150,7 +162,14 @@ export async function createImapAccount(
 
   const account = await EmailAccount.findOneAndUpdate(
     { email }, // Find by email
-    { userId, email, imapHost, imapPort, password: encryptedPassword }, // Update these fields
+    {
+      userId,
+      email,
+      imapHost,
+      imapPort,
+      password: encryptedPassword,
+      authType: "IMAP",
+    }, // Update these fields
     { upsert: true, new: true }, // Create if doesn't exist
   );
 
@@ -294,6 +313,7 @@ function buildThreads(emails) {
           minute: "2-digit",
         }),
         body: email.text,
+        rawHtmlbody: email.rawHtml,
         avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(email.from)}`,
         date: email.date,
       })),
@@ -316,12 +336,28 @@ function buildThreads(emails) {
 }
 
 async function fetchRawEmails(account) {
-  const decryptedPassword = decrypt(account.password);
+  let auth = {};
+
+  if (account.authType === "google") {
+    // Gmail OAuth2 Path
+    const token = await getGmailAccessToken(account);
+    auth = {
+      user: account.email,
+      accessToken: token, // ImapFlow handles OAuth2 if this key is present
+    };
+  } else {
+    // Standard IMAP Path
+    auth = {
+      user: account.email,
+      pass: decrypt(account.password),
+    };
+  }
+
   const client = new ImapFlow({
     host: account.imapHost,
     port: account.imapPort || 993,
     secure: true,
-    auth: { user: account.email, pass: decryptedPassword },
+    auth: auth,
     logger: false,
   });
 
@@ -329,14 +365,19 @@ async function fetchRawEmails(account) {
   await client.connect();
 
   try {
-    const folders = ["Inbox", "Sent"];
+    const sentFolderName =
+      account.authType === "google" ? "[Gmail]/Sent Mail" : "Sent";
+    const folders = ["Inbox", sentFolderName];
     for (const folder of folders) {
       const mailbox = await client.mailboxOpen(
         folder == "Inbox" ? "INBOX" : folder,
       );
       if (mailbox.exists === 0) continue;
 
-      const lastUID = account.lastSyncedUIDs.get(folder) || 0;
+      // Use the internal folder name for your UID tracking
+      const storageKey = folder === "[Gmail]/Sent Mail" ? "Sent" : folder;
+      const lastUID = account.lastSyncedUIDs.get(storageKey) || 0;
+
       const highestUID = mailbox.uidNext;
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -357,27 +398,51 @@ async function fetchRawEmails(account) {
         source: true,
         uid: true,
       })) {
-        const parsed = await simpleParser(message.source);
-        const parser = new EmailReplyParser();
-        const lastMessage = parser.read(parsed.text).getVisibleText();
+        const parsed = await simpleParser(message.source);        
+
+        // Ensure HTML is always present
+        const rawHtml = parsed.html || parsed.textAsHtml;
+        let lastMessage = ""; // declare once
+
+        if (account.authType === "google") {
+          let text = parsed.text || "";
+
+          const replySeparators = [
+            /\nOn .* wrote:\n/i, // Gmail
+            /\nFrom: .*?\nSent: .*?\n/i, // Outlook
+            /\n-----Original Message-----/i,
+          ];
+
+          for (const separator of replySeparators) {
+            if (separator.test(text)) {
+              text = text.split(separator)[0];
+              break;
+            }
+          }
+          lastMessage = text.split("\n--")[0].trim();
+        } else {
+          const parser = new EmailReplyParser();
+          lastMessage = parser.read(parsed.text).getVisibleText();
+        }
 
         emails.push({
           uid: message.uid,
-          messageId: parsed.messageId,
-          inReplyTo: parsed.inReplyTo,
-          references: parsed.references,
-          subject: parsed.subject,
-          from: parsed.from?.text,
-          to: parsed.to?.text,
-          date: parsed.date,
-          text: lastMessage,
-          folder: folder,
+          messageId: parsed.messageId || "",
+          inReplyTo: parsed.inReplyTo || "",
+          references: parsed.references || "",
+          subject: parsed.subject || "",
+          from: parsed.from?.text || "",
+          to: parsed.to?.text || "",
+          date: parsed.date || "",
+          text: lastMessage || "",
+          rawHtml: rawHtml || "",
+          folder: storageKey || "",
         });
         if (message.uid > maxUID) maxUID = message.uid;
       }
-
-      if (maxUID > lastUID) {
-        account.lastSyncedUIDs.set(folder, maxUID);
+      
+      if (maxUID > lastUID) {        
+        account.lastSyncedUIDs.set(storageKey, maxUID);
         await account.save();
       }
     }
@@ -442,4 +507,18 @@ async function linkAndSaveThread(userId, accountEmail, thread) {
     "user",
     thread.date,
   );
+}
+
+async function getGmailAccessToken(account) {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: decrypt(account.refreshToken), // Use your existing decrypt util
+  });
+
+  const { token } = await oauth2Client.getAccessToken();
+  return token;
 }

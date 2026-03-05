@@ -5,6 +5,69 @@ import {
   EmailAccounts,
   createImapAccount,
 } from "../Services/emailService.js";
+import { google } from "googleapis";
+import { EmailAccount } from "../models/EmailAccount.js";
+import { encrypt } from "../utils/crypto.js";
+
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI, 
+);
+
+// Google Email Add - Generate Auth URL ---
+export const getGoogleAuthUrl = (req, res) => {
+  const scopes = [
+    "https://mail.google.com/",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+  ];
+
+  const url = oauth2Client.generateAuthUrl({
+    access_type: "offline", // Essential for Refresh Token
+    prompt: "consent", // Forces Google to provide refresh token every time
+    scope: scopes,
+    state: req.user.id, // Pass the internal DB userId to identify them on return
+  });
+
+  res.json({ url });
+};
+
+//  Google Email Add -: Handle Callback & Save to DB ---
+export const handleGoogleCallback = async (req, res) => {
+  const { code, state } = req.query; // 'state' is the userId we passed above
+  const userId = state;
+
+  try {
+    // Exchange code for tokens
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    // Get the user's email address from Google
+    const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+    const userInfo = await oauth2.userinfo.get();
+    const userEmail = userInfo.data.email;
+
+    const account = await EmailAccount.findOneAndUpdate(
+      { userId, email: userEmail },
+      {
+        userId,
+        email: userEmail,
+        authType: "google",
+        refreshToken: encrypt(tokens.refresh_token), // Securely store
+        imapHost: "imap.gmail.com",
+        imapPort: 993,
+      },
+      { upsert: true, new: true },
+    );
+
+    // Redirect back to your frontend dashboard
+    res.redirect(`${process.env.FRONTEND_URL}/settings?status=success`);
+  } catch (error) {
+    console.error("Google Auth Error:", error);
+    res.redirect(`${process.env.FRONTEND_URL}/settings?status=error`);
+  }
+};
 
 export const getEmailAccounts = async (req, res) => {
   try {

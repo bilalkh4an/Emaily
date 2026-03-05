@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Reply, ReplyAll, Forward, Sparkles, Clock, Paperclip } from "lucide-react";
+import {
+  Reply,
+  ReplyAll,
+  Forward,
+  Sparkles,
+  Clock,
+  Paperclip,
+} from "lucide-react";
+import DOMPurify from "dompurify";
 
 const ReadingPane = ({
   setComposeData,
@@ -38,7 +46,10 @@ const ReadingPane = ({
                   <>
                     <span className="mx-1">•</span>
                     <Paperclip size={14} />
-                    <span>{openEmail.attachments.length} attachment{openEmail.attachments.length > 1 ? 's' : ''}</span>
+                    <span>
+                      {openEmail.attachments.length} attachment
+                      {openEmail.attachments.length > 1 ? "s" : ""}
+                    </span>
                   </>
                 )}
               </div>
@@ -46,58 +57,67 @@ const ReadingPane = ({
 
             {/* THREAD CONVERSATION START */}
             <div className="space-y-6 mb-8">
-              {openEmail.messages.map((msg, index) => (
-                <div key={msg._id || `msg-${index}`} className="relative">
-                  {/* Message Card */}
-                  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all">
-                    {/* Message Header */}
-                    <div className="flex items-start gap-3 mb-3">
-                      <Avatar
-                        email={{ sender: msg.sender, avatar: msg.avatar }}
-                        size="w-9 h-9"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-0.5">
-                          <p className="font-semibold text-sm text-gray-900 truncate">
-                            {msg.sender}
+              {openEmail.messages.map((msg, index) => {
+                const content = msg.rawHtmlbody
+                  ? DOMPurify.sanitize(msg.rawHtmlbody)
+                  : `<pre>${msg.rawHtmlbody || ""}</pre>`;
+
+                return (
+                  <div key={msg._id || `msg-${index}`} className="relative">
+                    {/* Message Card */}
+                    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all">
+                      {/* Message Header */}
+                      <div className="flex items-start gap-3 mb-3">
+                        <Avatar
+                          email={{ sender: msg.sender, avatar: msg.avatar }}
+                          size="w-9 h-9"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <p className="font-semibold text-sm text-gray-900 truncate">
+                              {msg.sender}
+                            </p>
+                            <span className="text-xs text-gray-500 whitespace-nowrap flex items-center gap-1">
+                              <Clock size={11} />
+                              {msg.time}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            To: {openEmail.sender}
                           </p>
-                          <span className="text-xs text-gray-500 whitespace-nowrap flex items-center gap-1">
-                            <Clock size={11} />
-                            {msg.time}  
-                          </span>
                         </div>
-                        <p className="text-xs text-gray-600">
-                          To: {openEmail.sender}
-                        </p>
                       </div>
+
+                      {/* Message Body */}
+                      <div className="text-sm text-gray-700 leading-relaxed break-words">
+                        <div dangerouslySetInnerHTML={{ __html: content }} />
+                      </div>
+
+                      {/* Attachments if any */}
+                      {msg.attachments?.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="flex flex-wrap gap-2">
+                            {msg.attachments.map((att, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700"
+                              >
+                                <Paperclip size={12} />
+                                {att}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Message Body */}
-                    <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line break-words">
-                      {msg.body}
-                    </div>                    
-
-                    {/* Attachments if any */}
-                    {msg.attachments?.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <div className="flex flex-wrap gap-2">
-                          {msg.attachments.map((att, i) => (
-                            <div key={i} className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700">
-                              <Paperclip size={12} />
-                              {att}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                    {/* Vertical connector line between messages */}
+                    {index !== openEmail.messages.length - 1 && (
+                      <div className="absolute left-4 top-[100%] h-6 w-0.5 bg-gradient-to-b from-gray-300 to-transparent"></div>
                     )}
                   </div>
-
-                  {/* Vertical connector line between messages */}
-                  {index !== openEmail.messages.length - 1 && (
-                    <div className="absolute left-4 top-[100%] h-6 w-0.5 bg-gradient-to-b from-gray-300 to-transparent"></div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
             {/* THREAD CONVERSATION END */}
 
@@ -147,8 +167,12 @@ const ReadingPane = ({
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
               <Reply size={24} className="text-gray-300" />
             </div>
-            <p className="text-base font-semibold text-gray-500">No email selected</p>
-            <p className="text-xs text-gray-400">Select an email from the list to read</p>
+            <p className="text-base font-semibold text-gray-500">
+              No email selected
+            </p>
+            <p className="text-xs text-gray-400">
+              Select an email from the list to read
+            </p>
           </div>
         </div>
       )}

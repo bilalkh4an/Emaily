@@ -61,17 +61,19 @@ const TrainingLab = ({ isOpen, onClose, account }) => {
       }
 
       const result = await res.json(); // 👈 important
+      
 
       const emailList = result.emails
         .filter((item) => item.account === selectedAccount)
         .flatMap((item) =>
           item.messages
             .filter((msg) => msg.folder === "Sent")
-            .map((msg) => ({
+            .map((msg) => ( {
               subject: item.subject,
               body: msg.body,
             })),
         );
+        
 
       setInboxdata(emailList);
     } catch (error) {

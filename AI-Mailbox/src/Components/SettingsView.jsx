@@ -92,6 +92,30 @@ const SettingsModal = ({ isOpen, onClose, username, useremail, account }) => {
     }
   };
 
+  const handleGoogleAdd = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/google/auth-url`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+      window.location.href = data.url;
+    } catch (error) {
+      alert(error);
+      console.error("Failed to generate draft:", error);
+    }
+  };
+
   const Toggle = ({ label, subtitle, active }) => (
     <div className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:shadow-md transition-shadow">
       <div className="flex-1">
@@ -326,13 +350,14 @@ const SettingsModal = ({ isOpen, onClose, username, useremail, account }) => {
                     <label className="text-[10px] font-black text-gray-400 uppercase px-1 tracking-wider">
                       Add New Account
                     </label>
-                    {/* <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
                       {[
                         {
                           stage: "google",
                           icon: Globe,
                           color: "blue",
                           label: "Google Mail",
+                          function1: "handleGoogleAdd",
                         },
                         {
                           stage: "outlook",
@@ -354,7 +379,7 @@ const SettingsModal = ({ isOpen, onClose, username, useremail, account }) => {
                           </span>
                         </button>
                       ))}
-                    </div> */}
+                    </div>
                     <button
                       onClick={() => setConfigStage("imap")}
                       className="w-full flex items-center justify-center gap-2 py-3.5 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50/50 transition-all font-bold text-sm active:scale-95"
@@ -384,7 +409,10 @@ const SettingsModal = ({ isOpen, onClose, username, useremail, account }) => {
                       EmailShop to access your account.
                     </p>
                   </div>
-                  <button className="bg-gradient-to-r from-gray-900 to-gray-800 text-white px-8 sm:px-10 py-3.5 rounded-2xl font-bold text-sm hover:from-black hover:to-gray-900 shadow-lg hover:shadow-xl active:scale-95 transition-all">
+                  <button
+                    className="bg-gradient-to-r from-gray-900 to-gray-800 text-white px-8 sm:px-10 py-3.5 rounded-2xl font-bold text-sm hover:from-black hover:to-gray-900 shadow-lg hover:shadow-xl active:scale-95 transition-all"
+                    onClick={handleGoogleAdd}
+                  >
                     Continue to Authorization
                   </button>
                 </div>
