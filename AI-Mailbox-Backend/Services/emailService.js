@@ -39,20 +39,38 @@ export async function fetchMailbox(userId) {
 }
 
 export async function fetchSentEmails(userId, page = 1, limit = 20) {
-  // Calculate how many emails to skip
   const skip = (page - 1) * limit;
 
-  // 1. Fetch only the specific "slice" of emails
-  const emails = await EmailMemory.find({ userId })
-    .sort({ date: -1 }) // Keep newest first
-    .skip(skip)
-    .limit(limit);
+  // Get all unique accounts for this user
+  const accounts = await EmailMemory.distinct("account", { userId });
+  
+  if (accounts.length === 0) {
+    return { emails: [], total: 0, currentPage: page, totalPages: 0 };
+  }
 
-  // 2. Get total count for the frontend to know if there's more to load
+  // Fetch emails from ALL accounts with per-account pagination
+  const perAccountLimit = Math.ceil(limit / accounts.length);
+  const perAccountSkip = (page - 1) * perAccountLimit;
+
+  const emailsByAccount = await Promise.all(
+    accounts.map(account =>
+      EmailMemory.find({ userId, account })
+        .sort({ date: -1 })
+        .skip(perAccountSkip)
+        .limit(perAccountLimit)
+    )
+  );
+
+  // Interleave emails from all accounts, sorted by date
+  const merged = emailsByAccount
+    .flat()
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, limit);
+
   const total = await EmailMemory.countDocuments({ userId });
 
   return {
-    emails,
+    emails: merged,
     total,
     currentPage: page,
     totalPages: Math.ceil(total / limit),

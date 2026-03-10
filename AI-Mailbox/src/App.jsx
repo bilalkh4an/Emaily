@@ -104,7 +104,7 @@ function App() {
     try {
       // Note: You will need to update your backend API to accept ?page=X
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/emails/conversation?page=${pageNum}&limit=10`,
+        `${import.meta.env.VITE_API_URL}/api/emails/conversation?page=${pageNum}&limit=100`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -115,6 +115,7 @@ function App() {
       if (!res.ok) throw new Error("Failed to fetch emails");
 
       const result = await res.json();
+       setHasMore(pageNum < result.totalPages);
 
       const formatted = result.emails.map((email) => ({
         id: email._id,
@@ -130,11 +131,11 @@ function App() {
       }));
 
       // 2. LOGIC FIX: Only set hasMore to false if we get LESS than our limit
-      if (formatted.length < 10) {
-        setHasMore(false);
-      } else {
-        setHasMore(true); // Keep it true if we hit the limit exactly
-      }
+      // if (formatted.length < 10) {
+      //   setHasMore(false);
+      // } else {
+      //   setHasMore(true); // Keep it true if we hit the limit exactly
+      // }
 
       setAllEmails((prev) =>
         pageNum === 1 ? formatted : [...prev, ...formatted],
@@ -204,9 +205,13 @@ function App() {
   const openEmail = allEmails.find((e) => e.id === selectedEmail);
 
   const filteredEmails = allEmails.filter((email) => {
-    const matchesFolder = email.messages?.some(
-      (msg) => msg.folder === activeFolder,
-    );
+    //const matchesFolder = email.folder === activeFolder; // use thread-level folder
+    // const matchesFolder = email.messages?.some(
+    //   (msg) => msg.folder === activeFolder,
+    // );
+
+    const matchesFolder = email.folder == "Inbox" ? email.messages?.some((msg) => msg.folder === activeFolder,) : email.folder === activeFolder
+
     const matchesAccount =
       activeTab === "All Mail" || email.account === activeTab;
     const matchesSearch =
@@ -352,6 +357,7 @@ function App() {
             Avatar={Avatar}
             openEmail={openEmail}
             setIsAIReplyOpen={setIsAIReplyOpen}
+            activeFolder={activeFolder}
           />
         </section>
 

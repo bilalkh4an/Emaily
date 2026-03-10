@@ -4,6 +4,8 @@ import {
   getEmailAccounts,
   getMailBox,
   getConversation,
+  updateConversationFolder,
+  updateConversationRead,
   sendEmailHandler,
   addImapAccount,
   getGoogleAuthUrl, 
@@ -16,6 +18,9 @@ const router = express.Router();
 router.get("/emailaccounts", protect, getEmailAccounts);
 router.get("/emails/fetch/", protect, getMailBox);
 router.get("/emails/conversation/", protect, getConversation);
+router.post("/emails/update-conversation-folder/", protect, updateConversationFolder);
+router.post("/emails/update-conversation-read/", protect, updateConversationRead);
+
 router.post("/sentemail", protect, sendEmailHandler);
 router.post("/create/imapaccount", protect, addImapAccount);
 

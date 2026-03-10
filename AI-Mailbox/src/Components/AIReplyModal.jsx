@@ -101,14 +101,15 @@ const AIReplyModal = ({
     };
 
     const formatTextToHTML = (text) => {
-      if (!text) return "";
+  if (!text) return "";
 
-      // Split on both \n and \r\n for Windows compatibility
-      return text
-        .split(/\r?\n/)
-        .map((line) => `<p>${line}</p>`) // Wrap every line, even if empty
-        .join("");
-    };
+  const normalized = text.replace(/\n{3,}/g, "\n\n");
+
+  return normalized
+    .trim()
+    .replace(/\n\n/g, "<br><br>")
+    .replace(/\n/g, "<br>");
+};
 
     return (
       <div className="bg-gradient-to-br from-white to-gray-50/50 border border-gray-200 rounded-2xl p-4 flex flex-col shadow-sm hover:shadow-md transition-all hover:border-blue-200">

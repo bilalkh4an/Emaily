@@ -17,22 +17,71 @@ const ReadinPaneTopNav = ({
   setAllEmails,
   folders,
 }) => {
-  const moveEmail = (id, targetFolder) => {
-    setAllEmails((prev) =>
-      prev.map((email) =>
-        email.id === id ? { ...email, folder: targetFolder } : email
-      )
-    );
+  const moveEmail = async (id, targetFolder) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/emails/update-conversation-folder/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            threadId: id,
+            newFolder: targetFolder,
+          }),
+        },
+      );
+
+      if (!response.ok) throw new Error("Stream failed");
+      if (response.ok) {
+        setAllEmails((prev) =>
+          prev.map((email) =>
+            email.id === id ? { ...email, folder: targetFolder } : email,
+          ),
+        );
+        //alert("Message Moved Successfully");
+      }
+    } catch (error) {
+      alert(error);
+      console.error("Failed to generate draft:", error);
+    }
+
     if (selectedEmail === id) setSelectedEmail(null);
     setIsMoreMenuOpen(false);
   };
 
-  const toggleReadStatus = (id) => {
+  const toggleReadStatus = async (id) => {
     setAllEmails((prev) =>
       prev.map((email) =>
-        email.id === id ? { ...email, unread: !email.unread } : email
-      )
+        email.id === id ? { ...email, unread: !email.unread } : email,
+      ),
     );
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/emails/update-conversation-read/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            threadId: id,
+          }),
+        },
+      );
+
+      if (!response.ok) throw new Error("Stream failed");
+      if (response.ok) {
+        //alert("Message Moved Successfully");
+      }
+    } catch (error) {
+      alert(error);
+      console.error("Failed to generate draft:", error);
+    }
   };
 
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
@@ -49,7 +98,7 @@ const ReadinPaneTopNav = ({
         </button>
 
         {/* Action Buttons */}
-        {/* <div className="flex gap-1.5">
+        <div className="flex gap-1.5">
           <button
             onClick={() => moveEmail(openEmail?.id, "Archive")}
             className="relative group p-2 hover:bg-blue-50 rounded-lg transition-all active:scale-95"
@@ -96,11 +145,11 @@ const ReadinPaneTopNav = ({
               {openEmail?.unread ? "Mark as read" : "Mark as unread"}
             </span>
           </button>
-        </div> */}
+        </div>
       </div>
 
       {/* More Menu */}
-      {/* <div className="relative">
+      <div className="relative">
         <button
           onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
           className={`p-2 rounded-lg transition-all active:scale-95 ${
@@ -133,7 +182,7 @@ const ReadinPaneTopNav = ({
                 <span>Print</span>
               </button>
               <div className="h-px bg-gray-100 my-1"></div>
-             
+
               {folders.map((item) => (
                 <div
                   key={item}
@@ -141,20 +190,19 @@ const ReadinPaneTopNav = ({
                     item === openEmail.folder ? "hidden" : "block"
                   }`}
                 >
-                  
                   <button
-                onClick={() => moveEmail(openEmail?.id, item)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-red-50 transition-colors"
-              >
-                <AlertOctagon size={16} />
-                <span>Move To {item}</span>
-              </button>
+                    onClick={() => moveEmail(openEmail?.id, item)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-red-50 transition-colors"
+                  >
+                    <AlertOctagon size={16} />
+                    <span>Move To {item}</span>
+                  </button>
                 </div>
               ))}
             </div>
           </>
         )}
-      </div> */}
+      </div>
     </header>
   );
 };

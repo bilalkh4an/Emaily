@@ -15,7 +15,8 @@ const EmailList = ({
       onScroll={onScroll}
       className="flex-1 overflow-y-auto" // This creates the internal scroll
     >
-      {filteredEmails.map((email) => {
+      {filteredEmails
+      .map((email) => {
         const isActive = selectedEmail === email.id;
         const currentFolder = activeFolder; // better: pass this as prop
 
