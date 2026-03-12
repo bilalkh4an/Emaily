@@ -43,7 +43,7 @@ export async function fetchSentEmails(userId, page = 1, limit = 20) {
 
   // Get all unique accounts for this user
   const accounts = await EmailMemory.distinct("account", { userId });
-  
+
   if (accounts.length === 0) {
     return { emails: [], total: 0, currentPage: page, totalPages: 0 };
   }
@@ -53,12 +53,12 @@ export async function fetchSentEmails(userId, page = 1, limit = 20) {
   const perAccountSkip = (page - 1) * perAccountLimit;
 
   const emailsByAccount = await Promise.all(
-    accounts.map(account =>
+    accounts.map((account) =>
       EmailMemory.find({ userId, account })
         .sort({ date: -1 })
         .skip(perAccountSkip)
-        .limit(perAccountLimit)
-    )
+        .limit(perAccountLimit),
+    ),
   );
 
   // Interleave emails from all accounts, sorted by date
@@ -152,7 +152,7 @@ export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
         port: 993,
         secure: true,
         auth: authConfig,
-        logger: false,
+        logger: true,
       });
 
       await client.connect();
@@ -376,7 +376,7 @@ async function fetchRawEmails(account) {
     port: account.imapPort || 993,
     secure: true,
     auth: auth,
-    logger: false,
+    logger: true,
   });
 
   const emails = [];
@@ -412,53 +412,59 @@ async function fetchRawEmails(account) {
       // const minUID = Math.max(1, HighestUID - windowSize + 1);
       // const fetchRange = lastUID > 0 ? { uid: `${lastUID + 1}:${highestUID}`}: {uid: `${minUID}:${HighestUID}` };
 
-      for await (let message of client.fetch(fetchRange, {
-        source: true,
-        uid: true,
-      })) {
-        const parsed = await simpleParser(message.source);        
+      try {
+        for await (let message of client.fetch(fetchRange, {
+          source: true,
+          uid: true,
+        })) {
+          const parsed = await simpleParser(message.source);
 
-        // Ensure HTML is always present
-        const rawHtml = parsed.html || parsed.textAsHtml;
-        let lastMessage = ""; // declare once
+          // Ensure HTML is always present
+          const rawHtml = parsed.html || parsed.textAsHtml;
+          let lastMessage = ""; // declare once
 
-        if (account.authType === "google") {
-          let text = parsed.text || "";
+          if (account.authType === "google") {
+            let text = parsed.text || "";
 
-          const replySeparators = [
-            /\nOn .* wrote:\n/i, // Gmail
-            /\nFrom: .*?\nSent: .*?\n/i, // Outlook
-            /\n-----Original Message-----/i,
-          ];
+            const replySeparators = [
+              /\nOn .* wrote:\n/i, // Gmail
+              /\nFrom: .*?\nSent: .*?\n/i, // Outlook
+              /\n-----Original Message-----/i,
+            ];
 
-          for (const separator of replySeparators) {
-            if (separator.test(text)) {
-              text = text.split(separator)[0];
-              break;
+            for (const separator of replySeparators) {
+              if (separator.test(text)) {
+                text = text.split(separator)[0];
+                break;
+              }
             }
+            lastMessage = text.split("\n--")[0].trim();
+          } else {
+            const parser = new EmailReplyParser();
+            // FIX: Fallback to empty string if parsed.text is missing
+            const textToParse = parsed.text || "";
+            lastMessage = parser.read(textToParse).getVisibleText();
           }
-          lastMessage = text.split("\n--")[0].trim();
-        } else {
-          const parser = new EmailReplyParser();
-          lastMessage = parser.read(parsed.text).getVisibleText();
-        }
 
-        emails.push({
-          uid: message.uid,
-          messageId: parsed.messageId || "",
-          inReplyTo: parsed.inReplyTo || "",
-          references: parsed.references || "",
-          subject: parsed.subject || "",
-          from: parsed.from?.text || "",
-          to: parsed.to?.text || "",
-          date: parsed.date || "",
-          text: lastMessage || "",
-          rawHtml: rawHtml || "",
-          folder: storageKey || "",
-        });
-        if (message.uid > maxUID) maxUID = message.uid;
+          emails.push({
+            uid: message.uid,
+            messageId: parsed.messageId || "",
+            inReplyTo: parsed.inReplyTo || "",
+            references: parsed.references || "",
+            subject: parsed.subject || "",
+            from: parsed.from?.text || "",
+            to: parsed.to?.text || "",
+            date: parsed.date || "",
+            text: lastMessage || "",
+            rawHtml: rawHtml || "",
+            folder: storageKey || "",
+          });
+          if (message.uid > maxUID) maxUID = message.uid;
+        }
+      } catch (err) {
+        console.warn(err.message);
       }
-      
+
       if (maxUID > lastUID) {
         account.lastSyncedUIDs.set(storageKey, maxUID);
         await account.save();

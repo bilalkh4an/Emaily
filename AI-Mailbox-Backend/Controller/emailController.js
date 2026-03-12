@@ -175,9 +175,9 @@ export const handleGoogleCallback = async (req, res) => {
     );
 
     // Redirect back to your frontend dashboard
-    res.redirect(`https://emaily.uk?status=success`);
+    res.redirect(`https://app.emaily.uk?status=success`);
   } catch (error) {
     console.error("Google Auth Error:", error);
-    res.redirect(`https://emaily.uk?status=error`);
+    res.redirect(`https://app.emaily.uk?status=error`);
   }
 };
