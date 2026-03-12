@@ -299,7 +299,7 @@ const AIReplyModal = ({
             ) : (
               <Sparkles size={18} />
             )}
-            {loading ? "Generating..." : "Regenerate AI Drafts"}
+            {loading ? "Generating..." : "Generate AI Drafts"}
           </button>
 
           <button

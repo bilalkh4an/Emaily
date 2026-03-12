@@ -6,6 +6,9 @@ import {
   Sparkles,
   Clock,
   Paperclip,
+  ChevronDown,
+  ChevronUp,
+  MailOpen,
 } from "lucide-react";
 import DOMPurify from "dompurify";
 
@@ -16,167 +19,291 @@ const ReadingPane = ({
   Avatar,
   openEmail,
 }) => {
-  const handleAction = (type, email) => {
-    let prefix = type === "reply" ? "Re: " : "Fwd: ";
-    setComposeData({
-      from: email.account,
-      to: type === "reply" ? email.sender : "",
-      subject: `${prefix}${email.subject}`,
-      body: `\n\n--- Original Message ---\nFrom: ${email.sender}\n\n${email.messages[0].body}`,
-      threadid: email.threadid,
-      attachments: [],
-    });
-    setIsComposeOpen(true);
+  const [collapsedMessages, setCollapsedMessages] = useState({});
+
+  const toggleMessage = (id) => {
+    setCollapsedMessages((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleAction = (type, email) => {
+  // 1. Get the most recent message in the thread to reply to
+  const lastMessage = email.messages[0];
+  const prefix = type === "reply" ? "Re: " : "Fwd: ";
+  
+  // 2. Format the Date and Header
+  const dateStr = lastMessage.time || new Date().toLocaleString();
+  
+  // Industry standard "On... wrote:" line
+  const quoteHeader = type === "reply" 
+    ? `<div style="margin: 20px 0 10px 0;">On ${dateStr}, ${lastMessage.sender} wrote:</div>`
+    : `<div style="margin: 20px 0 10px 0;">
+        <hr style="border:none; border-top:1px solid #e0e0e0;" />
+        <p style="margin:0; font-family: sans-serif; font-size: 14px;">
+          <b>From:</b> ${lastMessage.sender}<br>
+          <b>Date:</b> ${dateStr}<br>
+          <b>Subject:</b> ${email.subject}<br>
+          <b>To:</b> ${email.account}<br>
+        </p>
+        <br>
+       </div>`;
+
+  // 3. Construct the HTML body with "Bulletproof" CSS
+  // We use inline styles because email clients (especially Gmail) strip <style> tags.
+  const originalContent = lastMessage.rawHtmlbody || lastMessage.body || "";
+  
+  const professionalBody = `
+    <div><br></div> 
+    <div class="gmail_quote">
+      ${quoteHeader}
+      <blockquote 
+        type="cite" 
+        style="margin:0 0 0 .8ex; border-left:1px #ccc solid; padding-left:1ex; color: #500050;"
+      >
+        ${originalContent}
+      </blockquote>
+    </div>
+  `;
+
+  // 4. Set the Compose Data
+  setComposeData({
+    from: email.account,
+    to: type === "reply" ? email.sender : "",
+    // Avoid "Re: Re: Re: " by checking if prefix already exists
+    subject: email.subject.toLowerCase().startsWith(prefix.toLowerCase()) 
+      ? email.subject 
+      : `${prefix}${email.subject}`,
+    body: professionalBody,
+    // CRITICAL: Include the original message ID so your backend can 
+    // set the 'In-Reply-To' and 'References' headers properly.
+    inReplyTo: lastMessage.messageId || email.threadid, 
+    threadid: email.threadid,
+    attachments: [],
+  });
+  
+  setIsComposeOpen(true);
+};
+
+  const formatTime = (time) => time || "Unknown time";
+
   return (
-    <>
+    <div className="flex-1 flex flex-col overflow-hidden bg-[#f8f7f4]">
       {openEmail ? (
-        <div className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50/30 to-white">
-          <div className="max-w-4xl mx-auto px-4 py-6 lg:px-8 lg:py-8">
-            {/* Email Header Section */}
-            <div className="mb-6 pb-4 border-b border-gray-200">
-              <h1 className="text-xl font-bold text-gray-900 mb-2 leading-tight">
-                {openEmail.subject}
-              </h1>
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <Clock size={14} />
-                <span>{openEmail.messages[0].time}</span>
-                {openEmail.attachments?.length > 0 && (
-                  <>
-                    <span className="mx-1">•</span>
-                    <Paperclip size={14} />
-                    <span>
-                      {openEmail.attachments.length} attachment
-                      {openEmail.attachments.length > 1 ? "s" : ""}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
+        <>
+          {/* ── Top header ── */}
+          <div className="flex-shrink-0 bg-white border-b border-[#e8e5e0] px-6 py-5">
+            <h1
+              className="text-[1.25rem] font-semibold text-[#1a1814] leading-snug mb-3 tracking-tight"
+              
+            >
+              {openEmail.subject}
+            </h1>
 
-            {/* THREAD CONVERSATION START */}
-            <div className="space-y-6 mb-8">
-              {openEmail.messages.map((msg, index) => {
-                const content = msg.rawHtmlbody
-                  ? DOMPurify.sanitize(msg.rawHtmlbody)
-                  : `<pre>${msg.rawHtmlbody || ""}</pre>`;
+            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-[11px] text-[#8a857d] font-medium tracking-wide uppercase">
+              <span className="flex items-center gap-1.5">
+                <Clock size={12} strokeWidth={2} />
+                {formatTime(openEmail.messages[0]?.time)}
+              </span>
 
-                return (
-                  <div key={msg._id || `msg-${index}`} className="relative">
-                    {/* Message Card */}
-                    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all">
-                      {/* Message Header */}
-                      <div className="flex items-start gap-3 mb-3">
-                        <Avatar
-                          email={{ sender: msg.sender, avatar: msg.avatar }}
-                          size="w-9 h-9"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <p className="font-semibold text-sm text-gray-900 truncate">
-                              {msg.sender}
-                            </p>
-                            <span className="text-xs text-gray-500 whitespace-nowrap flex items-center gap-1">
-                              <Clock size={11} />
-                              {msg.time}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-600">
-                            To: {openEmail.sender}
-                          </p>
-                        </div>
-                      </div>
+              <span className="text-[#d0ccc6]">·</span>
 
-                      {/* Message Body */}
-                      <div className="text-sm text-gray-700 leading-relaxed break-words">
-                        <div dangerouslySetInnerHTML={{ __html: content }} />
-                      </div>
+              <span>
+                {openEmail.messages.length}{" "}
+                {openEmail.messages.length === 1 ? "message" : "messages"} in
+                thread
+              </span>
 
-                      {/* Attachments if any */}
-                      {msg.attachments?.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <div className="flex flex-wrap gap-2">
-                            {msg.attachments.map((att, i) => (
-                              <div
-                                key={i}
-                                className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700"
-                              >
-                                <Paperclip size={12} />
-                                {att}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Vertical connector line between messages */}
-                    {index !== openEmail.messages.length - 1 && (
-                      <div className="absolute left-4 top-[100%] h-6 w-0.5 bg-gradient-to-b from-gray-300 to-transparent"></div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {/* THREAD CONVERSATION END */}
-
-            {/* Action Buttons */}
-            <div className="sticky bottom-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-3">
-              <div className="bg-white border border-gray-200 rounded-xl p-3.5 shadow-lg">
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handleAction("reply", openEmail)}
-                    className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-bold shadow-md shadow-blue-200/50 hover:from-blue-700 hover:to-blue-800 transition-all active:scale-95"
-                  >
-                    <Reply size={16} />
-                    <span>Reply</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleAction("reply", openEmail)}
-                    className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-white border-2 border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95"
-                  >
-                    <ReplyAll size={16} />
-                    <span>Reply All</span>
-                  </button>
-
-                  {/* <button
-                    onClick={() => setIsAIReplyOpen(true)}
-                    className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-gradient-to-r from-purple-50 to-blue-50 text-purple-600 rounded-lg text-sm font-bold border-2 border-purple-200/50 hover:from-purple-100 hover:to-blue-100 hover:border-purple-300/50 transition-all active:scale-95 shadow-sm"
-                  >
-                    <Sparkles size={16} />
-                    <span>AI Reply</span>
-                  </button> */}
-
-                  <button
-                    onClick={() => handleAction("forward", openEmail)}
-                    className="flex items-center gap-1.5 px-3 md:px-4 py-2 bg-white border-2 border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95"
-                  >
-                    <Forward size={16} />
-                    <span>Forward</span>
-                  </button>
-                </div>
-              </div>
+              {openEmail.attachments?.length > 0 && (
+                <>
+                  <span className="text-[#d0ccc6]">·</span>
+                  <span className="flex items-center gap-1.5">
+                    <Paperclip size={12} strokeWidth={2} />
+                    {openEmail.attachments.length} attachment
+                    {openEmail.attachments.length > 1 ? "s" : ""}
+                  </span>
+                </>
+              )}
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gradient-to-b from-gray-50/30 to-white">
-          <div className="text-center space-y-2">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Reply size={24} className="text-gray-300" />
+
+          {/* ── Thread messages ── */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
+            {openEmail.messages.map((msg, index) => {
+              const msgId = msg._id || `msg-${index}`;
+              const isCollapsed = collapsedMessages[msgId];
+              const isLast = index === openEmail.messages.length - 1;
+              const content = msg.rawHtmlbody
+                ? DOMPurify.sanitize(msg.rawHtmlbody)
+                : `<pre style="white-space:pre-wrap">${msg.rawHtmlbody || ""}</pre>`;
+
+              return (
+                <div key={msgId} className="relative ">
+                  {/* Thread line connector */}
+                  {!isLast && (
+                    <div className="absolute left-[23px] top-[52px] bottom-[-12px] w-px bg-[#e0dbd4] z-0" />
+                  )}
+
+                  <div
+                    className={`relative z-10 bg-white rounded-2xl border transition-all duration-200 ${
+                      isLast
+                        ? "border-[#d4cfc9] shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
+                        : "border-[#ebe7e2] shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
+                    }`}
+                  >
+                    {/* Message header (always visible) */}
+                    <button
+                      onClick={() => !isLast && toggleMessage(msgId)}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left ${
+                        isLast ? "cursor-default" : "hover:bg-[#faf9f7] rounded-t-2xl"
+                      } transition-colors`}
+                    >
+                      <div className="flex-shrink-0">
+                        <Avatar
+                          email={{ sender: msg.sender, avatar: msg.avatar }}
+                          size="w-8 h-8"
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p
+                            className="text-sm font-semibold text-[#1a1814] truncate"
+                            
+                          >
+                            {msg.sender}
+                          </p>
+                          <span className="text-[11px] text-[#a09990] whitespace-nowrap font-medium">
+                            {formatTime(msg.time)}
+                          </span>
+                        </div>
+                        
+                          <p className="text-[11px] text-[#a09990] truncate mt-0.5">
+                            To: {msg.folder == "Inbox" ? openEmail.account: openEmail.sender}
+                          </p>
+                        
+                      </div>
+
+                      {!isLast && (
+                        <div className="flex-shrink-0 text-[#c5bfb8]">
+                          {isCollapsed ? (
+                            <ChevronDown size={15} />
+                          ) : (
+                            <ChevronUp size={15} />
+                          )}
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Message body */}
+                    {(!isCollapsed || isLast) && (
+                      <div className="px-4 pb-4 ">
+                        <div className="h-px bg-[#f0ece8] mb-3.5" />
+
+                        {/* To line */}
+                        <p className="text-[11px] text-[#a09990] font-medium mb-3.5 uppercase tracking-wide">
+                          To: {msg.folder == "Inbox" ? openEmail.account: openEmail.sender}
+                        </p>
+
+                        {/* Body */}
+                        <div
+                          className="text-[13.5px] text-[#2d2a26] leading-relaxed break-words prose prose-sm max-w-none "
+                         
+                          dangerouslySetInnerHTML={{ __html: content }}
+                        />
+
+                        {/* Attachments */}
+                        {msg.attachments?.length > 0 && (
+                          <div className="mt-4 pt-3.5 border-t border-[#f0ece8]">
+                            <p className="text-[10px] uppercase tracking-widest text-[#b0a99f] font-semibold mb-2">
+                              Attachments
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {msg.attachments.map((att, i) => (
+                                <div
+                                  key={i}
+                                  className="flex items-center gap-1.5 bg-[#f6f3f0] hover:bg-[#ede9e4] px-3 py-1.5 rounded-lg border border-[#e5e0da] text-[12px] font-medium text-[#5a5550] cursor-pointer transition-colors"
+                                >
+                                  <Paperclip size={11} strokeWidth={2} />
+                                  {att}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Action bar ── */}
+          <div className="flex-shrink-0 bg-white border-t border-[#e8e5e0] px-6 py-3.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Primary: Reply */}
+              <button
+                onClick={() => handleAction("reply", openEmail)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#1a1814] hover:bg-[#2d2a26] text-white rounded-xl text-[13px] font-semibold transition-colors shadow-sm"
+              >
+                <Reply size={14} strokeWidth={2.5} />
+                Reply
+              </button>
+
+              {/* Secondary actions */}
+              {[
+                {
+                  icon: <ReplyAll size={14} strokeWidth={2} />,
+                  label: "Reply All",
+                  action: () => handleAction("reply", openEmail),
+                },
+                {
+                  icon: <Forward size={14} strokeWidth={2} />,
+                  label: "Forward",
+                  action: () => handleAction("forward", openEmail),
+                },
+              ].map(({ icon, label, action }) => (
+                <button
+                  key={label}
+                  onClick={action}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#f3f0ec] hover:bg-[#ebe7e2] text-[#3d3a36] rounded-xl text-[13px] font-semibold border border-[#e5e0da] hover:border-[#d5d0ca] transition-colors"
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
+
+              {/* AI Reply — uncomment to enable */}
+              {/* <button
+                onClick={() => setIsAIReplyOpen(true)}
+                className="ml-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-50 to-indigo-50 hover:from-violet-100 hover:to-indigo-100 text-violet-700 rounded-xl text-[13px] font-semibold border border-violet-200/70 transition-colors"
+              >
+                <Sparkles size={14} strokeWidth={2} />
+                AI Reply
+              </button> */}
             </div>
-            <p className="text-base font-semibold text-gray-500">
-              No email selected
+          </div>
+        </>
+      ) : (
+        /* ── Empty state ── */
+        <div className="flex-1 flex flex-col items-center justify-center bg-[#f8f7f4]">
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#eee9e3] flex items-center justify-center mx-auto mb-4 border border-[#e0dbd4]">
+              <MailOpen size={22} className="text-[#b5afa8]" strokeWidth={1.5} />
+            </div>
+            <p
+              className="text-[15px] font-semibold text-[#6b6660] mb-1"
+              
+            >
+              No message selected
             </p>
-            <p className="text-xs text-gray-400">
-              Select an email from the list to read
+            <p className="text-[12px] text-[#a8a29b]">
+              Choose an email from the list to read it here
             </p>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
+
 export default ReadingPane;

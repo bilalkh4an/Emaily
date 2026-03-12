@@ -118,7 +118,7 @@ export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
     from: from,
     to,
     subject,
-    text: body,
+    html: body,
     // --- THREADING HEADERS ---
     // If inReplyToId exists, add it to the headers
     ...(inReplyToId && {

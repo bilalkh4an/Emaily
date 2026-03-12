@@ -27,7 +27,7 @@ const SideNav = ({
     const props = {
       size: 18,
       className: isActive
-        ? "text-blue-600"
+        ? "text-indigo-400"
         : "text-gray-400 group-hover:text-gray-600 transition-colors",
     };
     switch (folder) {
@@ -49,11 +49,11 @@ const SideNav = ({
   };
 
   return (
-    <aside className="hidden lg:flex w-64 border-r border-gray-100 flex-col bg-white">
+    <aside className="hidden lg:flex w-2/12 border-r border-gray-100 flex-col bg-white">
       {/* Brand Section */}
       <div className="px-6 py-7">
         <div className="flex items-center gap-3 px-1">
-          <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black italic shadow-lg shadow-blue-200">
+          <div className="w-8 h-8 bg-[#1a1814] rounded-xl flex items-center justify-center text-white font-black italic shadow-lg shadow-blue-200">
             E
           </div>
           <span className="font-black text-gray-800 tracking-tight text-lg">
@@ -65,7 +65,7 @@ const SideNav = ({
       {/* Compose */}
       <div className="px-4 mb-6">
         <button
-          className="group flex items-center justify-center gap-2 bg-blue-600 text-white w-full py-3.5 rounded-2xl shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 font-bold text-[15px]"
+          className="group flex items-center justify-center gap-2 bg-[#1a1814] font-semibold hover:bg-[#2d2a26] text-white w-full py-3.5 rounded-2xl shadow-xl shadow-blue-100  active:scale-[0.98] transition-all duration-200text-[15px]"
           onClick={() => {
             setComposeData({
               from: "",
@@ -79,7 +79,7 @@ const SideNav = ({
           }}
         >
           <Edit2
-            size={18}
+            size={15}
             className="group-hover:rotate-12 transition-transform"
           />
           Compose
@@ -101,7 +101,7 @@ const SideNav = ({
               key={folder}
               className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 ${
                 isActive
-                  ? "bg-blue-50/80 text-blue-700"
+                  ? "bg-[#ebe7e2] text-[#1a1814]"
                   : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
               }`}
               onClick={() => setActiveFolder(folder)}
@@ -163,14 +163,14 @@ const SideNav = ({
       <div className="p-4 border-t border-gray-50 bg-gray-50/30">
         <div className="flex items-center justify-between mb-4 px-2">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-blue-100 border-2 border-white shadow-sm flex items-center justify-center text-blue-600 font-bold text-xs">
+            <div className="w-9 h-9 rounded-full bg-blue-100 border-2 border-white shadow-sm flex items-center justify-center text-indigo-600 font-bold text-xs">
               JD
             </div>
             <div className="min-w-0">
               <p className="text-[12px] font-bold text-gray-800 truncate">
                 {username}
               </p>
-              <p className="text-[10px] text-green-600 font-black uppercase">
+              <p className="text-[10px] text-indigo-600 font-black uppercase">
                 Online
               </p>
             </div>
@@ -182,15 +182,15 @@ const SideNav = ({
             <p className="text-[10px] font-bold text-gray-500 uppercase">
               Storage
             </p>
-            <p className="text-[10px] font-bold text-blue-600">7.5 / 10 GB</p>
+            <p className="text-[10px] font-bold text-yellow-600">7.5 / 10 GB</p>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-1.5">
-            <div className="bg-blue-600 h-1.5 rounded-full w-[75%]" />
+            <div className="bg-red-600 h-1.5 rounded-full w-[75%]" />
           </div>
         </div>
 
         <button
-          className=" bg-blue-600 text-white w-full py-3.5 my-1 rounded-xl shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 font-bold text-[12px]"
+          className=" bg-[#1a1814] font-semibold hover:bg-[#2d2a26] text-white w-full py-3.5 my-1 rounded-xl shadow-xl shadow-blue-100 active:scale-[0.98] transition-all duration-200 text-[12px]"
           onClick={onLogout}
         >
           Logout

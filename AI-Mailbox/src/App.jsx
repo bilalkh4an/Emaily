@@ -267,7 +267,7 @@ function App() {
 
   return (
     <>
-      <div className="flex h-screen bg-white overflow-hidden text-[#1a1a1a] font-sans relative">
+      <div className="flex w-screen h-screen bg-white overflow-hidden text-[#1a1a1a] font-sans relative">
         <SideNav
           folders={folders}
           activeFolder={activeFolder}
@@ -283,7 +283,7 @@ function App() {
         <main
           className={`${
             selectedEmail ? "hidden lg:flex" : " flex"
-          } w-screen flex-1 sm:max-w-md border-r border-gray-100 flex-col h-full bg-white relative`}
+          } w-screen flex-1 sm:max-w-3/11 border-r border-gray-100 flex-col h-full bg-white relative`}
         >
           <TopNav
             folders={folders}
@@ -311,7 +311,7 @@ function App() {
             onScroll={handleScroll} // Pass the function
             isLoading={isLoading} // Pass the loading state
           />
-          {hasMore && (
+          {/* {hasMore && (
             <button
               onClick={() => fetchEmails(page + 1)}
               className="p-2 text-blue-500 text-sm font-medium"
@@ -319,7 +319,7 @@ function App() {
             >
               {isLoading ? "Loading..." : "Load More"}
             </button>
-          )}
+          )} */}
 
           <BottomNav
             setActiveFolder={setActiveFolder}
@@ -333,7 +333,7 @@ function App() {
         <section
           className={`${
             selectedEmail ? "flex" : "hidden lg:flex"
-          } flex-1 flex-col bg-white h-full z-20 fixed inset-0 lg:relative lg:inset-auto`}
+          } flex-1 flex-col bg-white h-full z-20 fixed inset-0 lg:relative lg:inset-auto w-screen sm:w-5/12`}
         >
           <ReadingPaneTopNav
             selectedEmail={selectedEmail}
@@ -378,9 +378,12 @@ function App() {
         isOpen={isAIReplyOpen}
         onClose={() => setIsAIReplyOpen(false)}
         onInsert={(text) => {
-          setComposeData((prev) => ({ ...prev, body: text }));
-          setIsAIReplyOpen(false);
-        }}
+  setComposeData((prev) => ({
+    ...prev,
+    body: text + (prev.body || "") + "\n\n"
+  }));
+  setIsAIReplyOpen(false);
+}}
       />
 
       <SettingsModal

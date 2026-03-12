@@ -47,6 +47,15 @@ const Compose = ({
             style: "margin: 0;", // This injects the style directly into the HTML tag
           },
         },
+        // ADD THIS BLOCK TO ALLOW BLOCKQUOTE STYLES
+        blockquote: {
+          HTMLAttributes: {
+            class: "gmail_quote",
+            style:
+              "margin: 0 0 0 0.8ex; border-left: 1px #ccc solid; padding-left: 1ex; color: #500050;",
+            type: "cite",
+          },
+        },
         underline: false,
         link: false,
       }),
@@ -111,7 +120,7 @@ const Compose = ({
             from: composeData.from,
             to: composeData.to,
             subject: composeData.subject,
-            body: editor.getText(),
+            body: editor.getHTML(),
             //inReplyToId: openEmail?.threadid || "",
             inReplyToId: composeData.threadid,
           }),
@@ -285,7 +294,7 @@ const Compose = ({
         />
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden bg-white">     
+      <div className="flex-1 flex flex-col overflow-hidden bg-white">
         <EditorContent editor={editor} className="flex-1 overflow-hidden" />
       </div>
 
