@@ -152,7 +152,7 @@ export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
         port: 993,
         secure: true,
         auth: authConfig,
-        logger: true,
+        logger: false,
       });
 
       await client.connect();
@@ -376,7 +376,7 @@ async function fetchRawEmails(account) {
     port: account.imapPort || 993,
     secure: true,
     auth: auth,
-    logger: true,
+    logger: false,
   });
 
   const emails = [];
