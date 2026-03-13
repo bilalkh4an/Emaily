@@ -1,7 +1,16 @@
 import mongoose from "mongoose";
 
+const AttachmentSchema = new mongoose.Schema({
+  filename: String,
+  contentType: String,
+  size: Number,
+  contentId: String, // Critical for identifying the specific part during download
+  checksum: String   // Optional: useful for verifying file integrity
+}, { _id: false });
+
 const MessageSchema = new mongoose.Schema(
   {
+    uid: Number,
     messageId: String,
     sender: String,
     folder: String,
@@ -10,7 +19,8 @@ const MessageSchema = new mongoose.Schema(
     rawHtmlbody: String,
     avatar: String,
     date: Date,
-    role: String
+    role: String,
+    attachments: [AttachmentSchema] 
   },
   { _id: false }
 );

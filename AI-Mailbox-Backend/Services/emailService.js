@@ -82,7 +82,7 @@ export async function EmailAccounts(userId) {
   return accounts;
 }
 
-export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
+export async function sentEmail(from, to, subject, body, userId, inReplyToId, attachments = []) {
   const accountDetails = await EmailAccount.findOne({
     userId,
     email: from,
@@ -119,6 +119,7 @@ export async function sentEmail(from, to, subject, body, userId, inReplyToId) {
     to,
     subject,
     html: body,
+    attachments: attachments,
     // --- THREADING HEADERS ---
     // If inReplyToId exists, add it to the headers
     ...(inReplyToId && {
@@ -204,7 +205,7 @@ async function saveFetchEmail(
   subject,
   time,
   unread,
-  avatar,
+  avatar,  
   messages,
   threadId,
   role,
@@ -231,7 +232,7 @@ async function saveFetchEmail(
           time,
           unread,
           avatar,
-          messages: sortedMessages, // Use the sorted array here
+          messages: sortedMessages, // Use the sorted array here          
           role: "user",
           date,
         },
@@ -318,11 +319,12 @@ function buildThreads(emails) {
     return {
       threadId,
       messages: group.map((email) => ({
+        uid: email.uid,
         messageId: email.messageId,
         inReplyTo: email.inReplyTo, // <--- ADD THIS
         references: email.references, // <--- ADD THIS
         sender: email.from.replace(/"/g, ""),
-        folder: email.folder,
+        folder: email.folder,        
         time: new Date(email.date).toLocaleString([], {
           year: "numeric",
           month: "short",
@@ -331,10 +333,11 @@ function buildThreads(emails) {
           minute: "2-digit",
         }),
         body: email.text,
-        rawHtmlbody: email.rawHtml,
+        rawHtmlbody: email.rawHtml,  
+        attachments: email.attachment || [],      
         avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(email.from)}`,
         date: email.date,
-      })),
+      })),      
       subject: group[0].subject,
       sender: displayRecipient.replace(/"/g, ""),
       time: new Date(group[group.length - 1].date).toLocaleString([], {
@@ -446,6 +449,16 @@ async function fetchRawEmails(account) {
             lastMessage = parser.read(textToParse).getVisibleText();
           }
 
+          // Map metadata only - DO NOT store att.content (the Buffer)
+          const attachmentMetadata = (parsed.attachments || []).map(att => ({
+            filename: att.filename || "unnamed_file",
+            contentType: att.contentType,
+            size: att.size,
+            contentId: att.contentId, // Required to identify the part later
+            checksum: att.checksum
+          }));
+          
+
           emails.push({
             uid: message.uid,
             messageId: parsed.messageId || "",
@@ -458,6 +471,7 @@ async function fetchRawEmails(account) {
             text: lastMessage || "",
             rawHtml: rawHtml || "",
             folder: storageKey || "",
+            attachment: attachmentMetadata || "",
           });
           if (message.uid > maxUID) maxUID = message.uid;
         }
@@ -502,6 +516,7 @@ async function linkAndSaveThread(userId, accountEmail, thread) {
 
   let finalMessages = thread.messages;
   let threadIdToUse = thread.threadId;
+  
 
   if (existingRecord) {
     threadIdToUse = existingRecord.threadId;
@@ -525,7 +540,7 @@ async function linkAndSaveThread(userId, accountEmail, thread) {
     thread.subject,
     thread.time,
     thread.messages.some((m) => m.unread),
-    thread.avatar,
+    thread.avatar,   
     finalMessages,
     threadIdToUse,
     "user",
@@ -533,7 +548,7 @@ async function linkAndSaveThread(userId, accountEmail, thread) {
   );
 }
 
-async function getGmailAccessToken(account) {
+export async function getGmailAccessToken(account) {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -546,3 +561,8 @@ async function getGmailAccessToken(account) {
   const { token } = await oauth2Client.getAccessToken();
   return token;
 }
+
+
+
+
+

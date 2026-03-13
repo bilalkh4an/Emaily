@@ -130,6 +130,8 @@ function App() {
         messages: email.messages || [],
       }));
 
+      
+
       // 2. LOGIC FIX: Only set hasMore to false if we get LESS than our limit
       // if (formatted.length < 10) {
       //   setHasMore(false);

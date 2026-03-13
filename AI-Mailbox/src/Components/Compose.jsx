@@ -108,33 +108,45 @@ const Compose = ({
   if (!isComposeOpen) return null;
   const handlesend = async () => {
     try {
+      // 1. Initialize FormData
+      const formData = new FormData();
+
+      // 2. Append standard fields
+      formData.append("from", composeData.from);
+      formData.append("to", composeData.to);
+      formData.append("subject", composeData.subject);
+      formData.append("body", editor.getHTML());
+      formData.append("inReplyToId", composeData.threadid || "");
+
+      // 3. Append the binary files
+      // Ensure composeData.attachments is an array of File objects from the step above
+      composeData.attachments.forEach((file) => {
+        formData.append("attachments", file);
+      });
+
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/api/sentEmail`,
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            // IMPORTANT: Remove 'Content-Type'.
+            // Browser automatically sets it to multipart/form-data with a boundary.
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-          body: JSON.stringify({
-            from: composeData.from,
-            to: composeData.to,
-            subject: composeData.subject,
-            body: editor.getHTML(),
-            //inReplyToId: openEmail?.threadid || "",
-            inReplyToId: composeData.threadid,
-          }),
+          body: formData, // Send the FormData object instead of JSON.stringify
         },
       );
 
-      if (!response.ok) throw new Error("Stream failed");
-      if (response.ok) {
-        setIsComposeOpen(false);
-        alert("Message Sent Successfully");
-      }
+      if (!response.ok) throw new Error("Failed to send email");
+
+      setIsComposeOpen(false);
+      alert("Message Sent Successfully");
+
+      // Reset attachments after successful send
+      setComposeData((prev) => ({ ...prev, attachments: [] }));
     } catch (error) {
-      alert(error);
-      console.error("Failed to generate draft:", error);
+      alert(error.message);
+      console.error("Failed to send email:", error);
     }
   };
 
@@ -304,15 +316,14 @@ const Compose = ({
           <input
             type="file"
             ref={fileInputRef}
-            onChange={(e) =>
+            onChange={(e) => {
+              const files = Array.from(e.target.files);
               setComposeData((prev) => ({
                 ...prev,
-                attachments: [
-                  ...prev.attachments,
-                  ...Array.from(e.target.files).map((f) => f.name),
-                ],
-              }))
-            }
+                // Change: Store the actual 'f' (File object) instead of just 'f.name'
+                attachments: [...prev.attachments, ...files],
+              }));
+            }}
             multiple
             className="hidden"
           />
@@ -347,7 +358,7 @@ const Compose = ({
               </div>
             )}
           </div>
-        </div>
+        </div>       
 
         <div className="flex items-center gap-4">
           <button
@@ -367,6 +378,29 @@ const Compose = ({
           </button>
         </div>
       </footer>
+       {/* Add this right before the <footer> tag */}
+        <div className="px-8 py-2 flex flex-wrap gap-2 bg-gray-50 border-t border-gray-100">
+          {composeData.attachments.map((file, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1 rounded-full text-[10px] font-bold text-gray-600 uppercase"
+            >
+              <Paperclip size={10} />
+              <span className="truncate max-w-[150px]">{file.name}</span>
+              <button
+                onClick={() =>
+                  setComposeData((prev) => ({
+                    ...prev,
+                    attachments: prev.attachments.filter((_, i) => i !== index),
+                  }))
+                }
+                className="hover:text-red-500 ml-1"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
     </div>
   );
 };

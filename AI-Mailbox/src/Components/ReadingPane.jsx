@@ -26,17 +26,18 @@ const ReadingPane = ({
   };
 
   const handleAction = (type, email) => {
-  // 1. Get the most recent message in the thread to reply to
-  const lastMessage = email.messages[0];
-  const prefix = type === "reply" ? "Re: " : "Fwd: ";
-  
-  // 2. Format the Date and Header
-  const dateStr = lastMessage.time || new Date().toLocaleString();
-  
-  // Industry standard "On... wrote:" line
-  const quoteHeader = type === "reply" 
-    ? `<div style="margin: 20px 0 10px 0;">On ${dateStr}, ${lastMessage.sender} wrote:</div>`
-    : `<div style="margin: 20px 0 10px 0;">
+    // 1. Get the most recent message in the thread to reply to
+    const lastMessage = email.messages[0];
+    const prefix = type === "reply" ? "Re: " : "Fwd: ";
+
+    // 2. Format the Date and Header
+    const dateStr = lastMessage.time || new Date().toLocaleString();
+
+    // Industry standard "On... wrote:" line
+    const quoteHeader =
+      type === "reply"
+        ? `<div style="margin: 20px 0 10px 0;">On ${dateStr}, ${lastMessage.sender} wrote:</div>`
+        : `<div style="margin: 20px 0 10px 0;">
         <hr style="border:none; border-top:1px solid #e0e0e0;" />
         <p style="margin:0; font-family: sans-serif; font-size: 14px;">
           <b>From:</b> ${lastMessage.sender}<br>
@@ -47,11 +48,11 @@ const ReadingPane = ({
         <br>
        </div>`;
 
-  // 3. Construct the HTML body with "Bulletproof" CSS
-  // We use inline styles because email clients (especially Gmail) strip <style> tags.
-  const originalContent = lastMessage.rawHtmlbody || lastMessage.body || "";
-  
-  const professionalBody = `
+    // 3. Construct the HTML body with "Bulletproof" CSS
+    // We use inline styles because email clients (especially Gmail) strip <style> tags.
+    const originalContent = lastMessage.rawHtmlbody || lastMessage.body || "";
+
+    const professionalBody = `
     <div><br></div> 
     <div class="gmail_quote">
       ${quoteHeader}
@@ -64,26 +65,56 @@ const ReadingPane = ({
     </div>
   `;
 
-  // 4. Set the Compose Data
-  setComposeData({
-    from: email.account,
-    to: type === "reply" ? email.sender : "",
-    // Avoid "Re: Re: Re: " by checking if prefix already exists
-    subject: email.subject.toLowerCase().startsWith(prefix.toLowerCase()) 
-      ? email.subject 
-      : `${prefix}${email.subject}`,
-    body: professionalBody,
-    // CRITICAL: Include the original message ID so your backend can 
-    // set the 'In-Reply-To' and 'References' headers properly.
-    inReplyTo: lastMessage.messageId || email.threadid, 
-    threadid: email.threadid,
-    attachments: [],
-  });
-  
-  setIsComposeOpen(true);
-};
+    // 4. Set the Compose Data
+    setComposeData({
+      from: email.account,
+      to: type === "reply" ? email.sender : "",
+      // Avoid "Re: Re: Re: " by checking if prefix already exists
+      subject: email.subject.toLowerCase().startsWith(prefix.toLowerCase())
+        ? email.subject
+        : `${prefix}${email.subject}`,
+      body: professionalBody,
+      // CRITICAL: Include the original message ID so your backend can
+      // set the 'In-Reply-To' and 'References' headers properly.
+      inReplyTo: lastMessage.messageId || email.threadid,
+      threadid: email.threadid,
+      attachments: [],
+    });
+
+    setIsComposeOpen(true);
+  };
 
   const formatTime = (time) => time || "Unknown time";
+  const token = localStorage.getItem("token");
+
+  const handleAttachmentDownload = async (uid, filename, folder, account) => {
+  try {
+    const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/emails/attachments?uid=${uid}&filename=${filename}&folder=${folder}&emailaddress=${account}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      // CRITICAL: Check if the response is OK (200)
+    if (!response.ok) {
+      const errorData = await response.json(); // Get the 33-byte error message
+      alert(`Download failed: ${errorData.error || "Server Error"}`);
+      return;
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (error) {
+    console.error("Failed to download:", error);
+  }
+};
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#f8f7f4]">
@@ -91,10 +122,7 @@ const ReadingPane = ({
         <>
           {/* ── Top header ── */}
           <div className="flex-shrink-0 bg-white border-b border-[#e8e5e0] px-6 py-5">
-            <h1
-              className="text-[1.25rem] font-semibold text-[#1a1814] leading-snug mb-3 tracking-tight"
-              
-            >
+            <h1 className="text-[1.25rem] font-semibold text-[#1a1814] leading-snug mb-3 tracking-tight">
               {openEmail.subject}
             </h1>
 
@@ -153,7 +181,9 @@ const ReadingPane = ({
                     <button
                       onClick={() => !isLast && toggleMessage(msgId)}
                       className={`w-full flex items-center gap-3 px-4 py-3.5 text-left ${
-                        isLast ? "cursor-default" : "hover:bg-[#faf9f7] rounded-t-2xl"
+                        isLast
+                          ? "cursor-default"
+                          : "hover:bg-[#faf9f7] rounded-t-2xl"
                       } transition-colors`}
                     >
                       <div className="flex-shrink-0">
@@ -165,21 +195,20 @@ const ReadingPane = ({
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline justify-between gap-2">
-                          <p
-                            className="text-sm font-semibold text-[#1a1814] truncate"
-                            
-                          >
+                          <p className="text-sm font-semibold text-[#1a1814] truncate">
                             {msg.sender}
                           </p>
                           <span className="text-[11px] text-[#a09990] whitespace-nowrap font-medium">
                             {formatTime(msg.time)}
                           </span>
                         </div>
-                        
-                          <p className="text-[11px] text-[#a09990] truncate mt-0.5">
-                            To: {msg.folder == "Inbox" ? openEmail.account: openEmail.sender}
-                          </p>
-                        
+
+                        <p className="text-[11px] text-[#a09990] truncate mt-0.5">
+                          To:{" "}
+                          {msg.folder == "Inbox"
+                            ? openEmail.account
+                            : openEmail.sender}
+                        </p>
                       </div>
 
                       {!isLast && (
@@ -200,13 +229,15 @@ const ReadingPane = ({
 
                         {/* To line */}
                         <p className="text-[11px] text-[#a09990] font-medium mb-3.5 uppercase tracking-wide">
-                          To: {msg.folder == "Inbox" ? openEmail.account: openEmail.sender}
+                          To:{" "}
+                          {msg.folder == "Inbox"
+                            ? openEmail.account
+                            : openEmail.sender}
                         </p>
 
                         {/* Body */}
                         <div
                           className="text-[13.5px] text-[#2d2a26] leading-relaxed break-words prose prose-sm max-w-none "
-                         
                           dangerouslySetInnerHTML={{ __html: content }}
                         />
 
@@ -220,10 +251,27 @@ const ReadingPane = ({
                               {msg.attachments.map((att, i) => (
                                 <div
                                   key={i}
+                                  // ADD: Call your download function here
+                                  onClick={() =>
+                                    handleAttachmentDownload(
+                                      msg.uid,
+                                      att.filename,
+                                      msg.folder,
+                                      openEmail.account,
+                                    )
+                                  }
                                   className="flex items-center gap-1.5 bg-[#f6f3f0] hover:bg-[#ede9e4] px-3 py-1.5 rounded-lg border border-[#e5e0da] text-[12px] font-medium text-[#5a5550] cursor-pointer transition-colors"
                                 >
                                   <Paperclip size={11} strokeWidth={2} />
-                                  {att}
+                                  {/* FIX: Access the filename property instead of rendering the whole object */}
+                                  <span className="truncate max-w-[150px]">
+                                    {att.filename}
+                                  </span>
+
+                                  {/* OPTIONAL: Show size in KB */}
+                                  <span className="text-[10px] text-[#a09990]">
+                                    ({(att.size / 1024).toFixed(0)} KB)
+                                  </span>
                                 </div>
                               ))}
                             </div>
@@ -288,12 +336,13 @@ const ReadingPane = ({
         <div className="flex-1 flex flex-col items-center justify-center bg-[#f8f7f4]">
           <div className="text-center">
             <div className="w-14 h-14 rounded-2xl bg-[#eee9e3] flex items-center justify-center mx-auto mb-4 border border-[#e0dbd4]">
-              <MailOpen size={22} className="text-[#b5afa8]" strokeWidth={1.5} />
+              <MailOpen
+                size={22}
+                className="text-[#b5afa8]"
+                strokeWidth={1.5}
+              />
             </div>
-            <p
-              className="text-[15px] font-semibold text-[#6b6660] mb-1"
-              
-            >
+            <p className="text-[15px] font-semibold text-[#6b6660] mb-1">
               No message selected
             </p>
             <p className="text-[12px] text-[#a8a29b]">

@@ -10,18 +10,21 @@ import {
   addImapAccount,
   getGoogleAuthUrl, 
   handleGoogleCallback,
+  getattachments,
 } from "../Controller/emailController.js";
+import multer from 'multer';
 
 
 const router = express.Router();
+const upload = multer(); // Uses memory storage for fast processing
 
 router.get("/emailaccounts", protect, getEmailAccounts);
 router.get("/emails/fetch/", protect, getMailBox);
 router.get("/emails/conversation/", protect, getConversation);
+router.get("/emails/attachments/", protect, getattachments);
 router.post("/emails/update-conversation-folder/", protect, updateConversationFolder);
 router.post("/emails/update-conversation-read/", protect, updateConversationRead);
-
-router.post("/sentemail", protect, sendEmailHandler);
+router.post('/sentEmail', protect, upload.array('attachments'), sendEmailHandler);
 router.post("/create/imapaccount", protect, addImapAccount);
 
 // Frontend hits this to get the link for the "Connect Google" button

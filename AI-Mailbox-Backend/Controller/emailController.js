@@ -4,12 +4,16 @@ import {
   sentEmail,
   EmailAccounts,
   createImapAccount,
+  getGmailAccessToken,
 } from "../Services/emailService.js";
 import { EmailMemory } from "../models/EmailMemory.js";
 import { google } from "googleapis";
 import { EmailAccount } from "../models/EmailAccount.js";
 import { encrypt } from "../utils/crypto.js";
 import { jwtDecode } from "jwt-decode";
+import { ImapFlow } from "imapflow";
+import { simpleParser } from "mailparser";
+import { decrypt } from "../utils/crypto.js"; // Ensure this path is correct
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -35,6 +39,75 @@ export const getConversation = async (req, res) => {
     const result = await fetchSentEmails(userId, page, limit);
     res.json(result); // already returns { emails, total, currentPage, totalPages }
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getattachments = async (req, res) => {
+
+  const { uid, filename, folder, emailaddress } = req.query;
+  const userId = req.user.id; // Get from your auth middleware  
+
+  try {
+    // 1. Fetch the user's account details from DB to get credentials
+    const account = await EmailAccount.findOne({ userId,email: emailaddress}); 
+    if (!account) return res.status(404).json({ error: "Account not found" });
+    
+
+   let auth = {};   
+     if (account.authType === "google") {
+       // Gmail OAuth2 Path
+       const token = await getGmailAccessToken(account);
+       auth = {
+         user: account.email,
+         accessToken: token, // ImapFlow handles OAuth2 if this key is present
+       };
+     } else {
+       // Standard IMAP Path
+       auth = {
+         user: account.email,
+         pass: decrypt(account.password),
+       };
+     }
+
+    // 2. Setup the IMAP client (Same logic as your fetchRawEmails)
+    const client = new ImapFlow({
+      host: account.imapHost,
+      port: account.imapPort || 993,
+      secure: true,
+      auth: auth,
+      logger: false,
+    });
+
+    await client.connect();
+    
+    // 3. Lock and Fetch
+    let lock = await client.getMailboxLock(folder);
+    try {
+      // Use { uid: true } to fetch by UID
+      const message = await client.fetchOne(uid, { source: true }, { uid: true });
+      
+      if (!message) throw new Error("Message not found");
+
+      const parsed = await simpleParser(message.source);
+      const attachment = parsed.attachments.find(a => a.filename === filename);
+
+      if (!attachment) throw new Error("Attachment not found");
+
+      // 4. Send the file
+      res.set({
+        'Content-Type': attachment.contentType,
+        'Content-Disposition': `attachment; filename="${attachment.filename}"`,
+      });
+      res.send(attachment.content);
+
+    } finally {
+      lock.release();
+      await client.logout();
+    }
+
+  } catch (error) {
+    console.error("Download Error:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -69,9 +142,22 @@ export const updateConversationRead = async (req, res) => {
 };
 
 export const sendEmailHandler = async (req, res) => {
+  
+  // 1. Destructure fields from req.body
   const { from, to, subject, body, inReplyToId } = req.body;
+
   try {
     const userId = req.user.id; // comes from protect middleware
+
+    // 2. Format attachments from req.files (Multer stores them here)
+    // We map through them to match the structure expected by sentEmail/Nodemailer
+    const attachments = req.files ? req.files.map(file => ({
+      filename: file.originalname,
+      content: file.buffer,      // The actual binary data
+      contentType: file.mimetype
+    })) : [];    
+
+    // 3. Pass the attachments array as the final argument
     const result = await sentEmail(
       from,
       to,
@@ -79,8 +165,10 @@ export const sendEmailHandler = async (req, res) => {
       body,
       userId,
       inReplyToId,
+      attachments // <--- Added this
     );
-    res.json(result);
+
+    res.json({ success: true });
   } catch (error) {
     console.error("Send email error:", error);
     res.status(500).json({ error: error.message });
